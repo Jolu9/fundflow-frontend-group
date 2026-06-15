@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, CreditCard, AlertTriangle, TrendingUp } from "lucide-react";
+import { Users, CreditCard, AlertTriangle, TrendingUp, PlusCircle, Globe, Clock } from "lucide-react";
 import axios from "axios";
 import Layout from "../components/Layout";
 
@@ -8,7 +8,9 @@ const API = "http://localhost:8000/api";
 
 export default function AdminDashboard() {
   const [user, setUser] = useState(null);
-  const [stats, setStats] = useState({ members: 0, activeLoans: 0, overdueLoans: 0, totalDisbursed: 0 });
+  const [communities, setCommunities] = useState([]);
+  const [loans, setLoans] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState(0);
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
@@ -16,84 +18,125 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!token) { navigate("/login"); return; }
     axios.get(`${API}/me`, { headers }).then(res => setUser(res.data)).catch(() => { localStorage.clear(); navigate("/login"); });
-    axios.get(`${API}/stats`, { headers }).then(res => setStats(res.data)).catch(() => {});
+    axios.get(`${API}/communities`, { headers }).then(res => setCommunities(res.data)).catch(() => {});
+    axios.get(`${API}/loans`, { headers }).then(res => setLoans(res.data)).catch(() => {});
+    axios.get(`${API}/join-requests`, { headers }).then(res => setPendingRequests(res.data.length)).catch(() => {});
   }, []);
 
   const logout = () => {
     axios.post(`${API}/logout`, {}, { headers }).finally(() => { localStorage.clear(); navigate("/login"); });
   };
 
-  const cards = [
-    { label: "Total Users", value: stats.members, icon: Users, gradient: "linear-gradient(135deg, #667EEA, #764BA2)", shadow: "rgba(102,126,234,0.35)" },
-    { label: "Active Loans", value: stats.activeLoans, icon: CreditCard, gradient: "linear-gradient(135deg, #11998e, #38ef7d)", shadow: "rgba(17,153,142,0.35)" },
-    { label: "Overdue Loans", value: stats.overdueLoans, icon: AlertTriangle, gradient: "linear-gradient(135deg, #f7971e, #ffd200)", shadow: "rgba(247,151,30,0.35)" },
-    { label: "Total Disbursed", value: `K${Number(stats.totalDisbursed).toLocaleString()}`, icon: TrendingUp, gradient: "linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)", shadow: "rgba(131,58,180,0.35)" },
-  ];
-
-  const actions = [
-    { label: "Manage Users", desc: "Create and manage system accounts", path: "/admin/users", icon: Users, gradient: "linear-gradient(135deg, #667EEA, #764BA2)" },
-    { label: "View Loans", desc: "Monitor all loans in the system", path: "/admin/loans", icon: CreditCard, gradient: "linear-gradient(135deg, #11998e, #38ef7d)" },
-    { label: "Reports", desc: "Generate financial summaries", path: "/admin/reports", icon: TrendingUp, gradient: "linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)" },
+  const globalStats = [
+    { label: "Total Communities", value: communities.length, icon: Globe, color: "#2563EB" },
+    { label: "Pending Join Requests", value: pendingRequests, icon: Clock, color: "#D97706" },
   ];
 
   return (
     <Layout user={user} onLogout={logout} role="admin" activePath="/admin">
-      {/* HERO BANNER */}
-      <div style={{ background: "linear-gradient(135deg, #0F0C29 0%, #302B63 50%, #24243E 100%)", borderRadius: 16, padding: "32px 36px", marginBottom: 28, position: "relative", overflow: "hidden" }}>
-        <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }} viewBox="0 0 800 160" preserveAspectRatio="xMidYMid slice">
-          <defs>
-            <pattern id="dgrid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="1"/>
-            </pattern>
-          </defs>
-          <rect width="800" height="160" fill="url(#dgrid)"/>
-          <circle cx="700" cy="20" r="120" fill="rgba(102,126,234,0.1)"/>
-          <circle cx="750" cy="140" r="80" fill="rgba(118,75,162,0.1)"/>
-        </svg>
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Admin Panel</div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: "#fff", marginBottom: 6 }}>Welcome back, {user?.name} 👋</h1>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)" }}>Here's what's happening with FundFlow today.</p>
-        </div>
+
+      {/* WELCOME */}
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#111827", marginBottom: 4 }}>
+          Welcome back, {user?.name}
+        </h1>
+        <p style={{ fontSize: 13, color: "#9CA3AF" }}>Platform overview across all communities.</p>
       </div>
 
-      {/* STAT CARDS */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, marginBottom: 32 }}>
-        {cards.map(card => {
+      {/* GLOBAL STATS */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16, marginBottom: 32 }}>
+        {globalStats.map(card => {
           const Icon = card.icon;
           return (
-            <div key={card.label} style={{ background: "#fff", borderRadius: 14, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.06)", border: "1px solid #EAECF0", position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: card.gradient }}></div>
-              <div style={{ width: 46, height: 46, borderRadius: 12, background: card.gradient, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, boxShadow: `0 4px 14px ${card.shadow}` }}>
-                <Icon size={21} color="#fff" strokeWidth={2} />
-              </div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: "#0F0C29", marginBottom: 4 }}>{card.value}</div>
-              <div style={{ fontSize: 13, color: "#9CA3AF" }}>{card.label}</div>
+            <div key={card.label} style={{ background: "#fff", borderRadius: 10, padding: "20px 24px", border: "1px solid #E5E7EB" }}>
+              <div style={{ fontSize: 11, fontWeight: 500, color: "#9CA3AF", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.06em" }}>{card.label}</div>
+              <div style={{ fontSize: 30, fontWeight: 700, color: "#111827", marginBottom: 8 }}>{card.value}</div>
+              <Icon size={15} color={card.color} strokeWidth={2} />
             </div>
           );
         })}
       </div>
 
       {/* QUICK ACTIONS */}
-      <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0F0C29", marginBottom: 16 }}>Quick actions</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
-        {actions.map(a => {
+      <div style={{ marginBottom: 16 }}>
+        <h2 style={{ fontSize: 14, fontWeight: 600, color: "#374151" }}>Quick Actions</h2>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16, marginBottom: 32 }}>
+        {[
+          { label: "Create Community", desc: "Set up a new Chilimba group", path: "/admin/communities", icon: PlusCircle, color: "#2563EB" },
+          { label: "Add User", desc: "Register a new platform user", path: "/admin/users", icon: Users, color: "#7C3AED" },
+        ].map(a => {
           const Icon = a.icon;
           return (
             <div key={a.label} onClick={() => navigate(a.path)}
-              style={{ background: "#fff", borderRadius: 14, padding: 24, cursor: "pointer", border: "1px solid #EAECF0", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", transition: "all 0.2s", position: "relative", overflow: "hidden" }}
-              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 24px rgba(102,126,234,0.15)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-              onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.06)"; e.currentTarget.style.transform = "translateY(0)"; }}>
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: a.gradient }}></div>
-              <div style={{ width: 46, height: 46, borderRadius: 12, background: a.gradient, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, boxShadow: "0 4px 14px rgba(102,126,234,0.3)" }}>
-                <Icon size={21} color="#fff" strokeWidth={2} />
+              style={{ background: "#fff", borderRadius: 10, padding: "20px 24px", cursor: "pointer", border: "1px solid #E5E7EB", display: "flex", alignItems: "center", gap: 16, transition: "border-color 0.15s" }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = "#BFDBFE"}
+              onMouseLeave={e => e.currentTarget.style.borderColor = "#E5E7EB"}>
+              <div style={{ width: 40, height: 40, borderRadius: 8, background: "#F7F8FA", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Icon size={18} color={a.color} />
               </div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#0F0C29", marginBottom: 4 }}>{a.label}</div>
-              <div style={{ fontSize: 13, color: "#9CA3AF" }}>{a.desc}</div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 2 }}>{a.label}</div>
+                <div style={{ fontSize: 12, color: "#9CA3AF" }}>{a.desc}</div>
+              </div>
             </div>
           );
         })}
       </div>
+
+      {/* COMMUNITIES BREAKDOWN */}
+      <div style={{ marginBottom: 16 }}>
+        <h2 style={{ fontSize: 14, fontWeight: 600, color: "#374151" }}>Communities</h2>
+      </div>
+
+      {communities.length === 0 ? (
+        <div style={{ background: "#fff", borderRadius: 10, border: "1px solid #E5E7EB", padding: "48px 24px", textAlign: "center" }}>
+          <Globe size={28} color="#D1D5DB" style={{ marginBottom: 10 }} />
+          <div style={{ fontSize: 13, color: "#9CA3AF" }}>No communities yet. Create one to get started.</div>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+          {communities.map(c => {
+            const treasurer = c.members?.find(m => m.pivot?.role === "treasurer");
+            const memberCount = c.members?.filter(m => m.pivot?.role === "member").length ?? 0;
+            const communityLoans = loans.filter(l => l.community_id === c.id);
+            const activeLoans = communityLoans.filter(l => l.status === "active").length;
+            const overdueLoans = communityLoans.filter(l => l.status === "overdue").length;
+            const totalDisbursed = communityLoans.reduce((sum, l) => sum + Number(l.amount), 0);
+
+            return (
+              <div key={c.id} style={{ background: "#fff", borderRadius: 10, border: "1px solid #E5E7EB", padding: "20px 24px" }}>
+                {/* Community header */}
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: "#111827", marginBottom: 4 }}>{c.name}</div>
+                  <div style={{ fontSize: 12, color: "#9CA3AF" }}>
+                    Treasurer: <span style={{ color: "#374151", fontWeight: 500 }}>{treasurer?.name ?? "—"}</span>
+                  </div>
+                </div>
+
+                {/* Stats row */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                  {[
+                    { label: "Members", value: memberCount, icon: Users, color: "#2563EB" },
+                    { label: "Active Loans", value: activeLoans, icon: CreditCard, color: "#059669" },
+                    { label: "Overdue", value: overdueLoans, icon: AlertTriangle, color: "#DC2626" },
+                    { label: "Disbursed", value: `K${totalDisbursed.toLocaleString()}`, icon: TrendingUp, color: "#7C3AED" },
+                  ].map(stat => {
+                    const Icon = stat.icon;
+                    return (
+                      <div key={stat.label} style={{ textAlign: "center", padding: "12px 8px", background: "#F9FAFB", borderRadius: 8 }}>
+                        <Icon size={13} color={stat.color} style={{ marginBottom: 6 }} />
+                        <div style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 2 }}>{stat.value}</div>
+                        <div style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 500 }}>{stat.label}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </Layout>
   );
 }

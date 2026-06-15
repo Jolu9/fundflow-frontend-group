@@ -1,109 +1,144 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Users, CreditCard, AlertTriangle, TrendingUp, PlusCircle, Globe, Clock } from "lucide-react";
 import axios from "axios";
+import Layout from "../components/Layout";
 
 const API = "http://localhost:8000/api";
 
-const Navbar = ({ user, onLogout }) => (
-  <div style={{ background: "#0D1B5E", padding: "0 32px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 60 }}>
-    <div style={{ fontSize: 20, fontWeight: 800, color: "#fff" }}>Fund<span style={{ color: "#4FC3F7" }}>Flow</span></div>
-    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-      <span style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>{user?.name}</span>
-      <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#4FC3F7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "#0D1B5E" }}>{user?.name?.[0] ?? "A"}</div>
-      <button onClick={onLogout} style={{ padding: "7px 16px", background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 6, fontSize: 13, cursor: "pointer", fontFamily: "'Poppins', sans-serif" }}>Logout</button>
-    </div>
-  </div>
-);
+const card = {
+  background: "#fff",
+  borderRadius: 14,
+  border: "1px solid #E8EAED",
+  boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+  padding: "22px 24px",
+};
 
-const Sidebar = ({ navigate, active }) => (
-  <div style={{ width: 220, background: "#fff", minHeight: "calc(100vh - 60px)", borderRight: "1px solid #eee", padding: "24px 0" }}>
-    {[
-      { label: "Dashboard", icon: "🏠", path: "/admin" },
-      { label: "Users", icon: "👤", path: "/admin/users" },
-      { label: "Loans", icon: "💰", path: "/admin/loans" },
-      { label: "Repayments", icon: "📋", path: "/admin/repayments" },
-      { label: "Reports", icon: "📊", path: "/admin/reports" },
-    ].map(item => (
-      <div key={item.label} onClick={() => navigate(item.path)}
-        style={{ padding: "12px 24px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", fontSize: 14, fontWeight: item.label === active ? 600 : 400, color: item.label === active ? "#0D1B5E" : "#666", background: item.label === active ? "#F0F4FF" : "transparent", borderLeft: item.label === active ? "3px solid #0D1B5E" : "3px solid transparent" }}>
-        <span>{item.icon}</span> {item.label}
-      </div>
-    ))}
-  </div>
-);
-
-export default function AdminLoans() {
+export default function AdminDashboard() {
   const [user, setUser] = useState(null);
+  const [communities, setCommunities] = useState([]);
   const [loans, setLoans] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState(0);
   const navigate = useNavigate();
-
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {
     if (!token) { navigate("/login"); return; }
     axios.get(`${API}/me`, { headers }).then(res => setUser(res.data)).catch(() => { localStorage.clear(); navigate("/login"); });
+    axios.get(`${API}/communities`, { headers }).then(res => setCommunities(res.data)).catch(() => {});
     axios.get(`${API}/loans`, { headers }).then(res => setLoans(res.data)).catch(() => {});
+    axios.get(`${API}/join-requests`, { headers }).then(res => setPendingRequests(res.data.length)).catch(() => {});
   }, []);
 
   const logout = () => {
     axios.post(`${API}/logout`, {}, { headers }).finally(() => { localStorage.clear(); navigate("/login"); });
   };
 
-  const statusBadge = (status) => {
-    const styles = {
-      active: { background: "#E8F5E9", color: "#388E3C" },
-      overdue: { background: "#FFEBEE", color: "#C62828" },
-      completed: { background: "#E3F2FD", color: "#1565C0" },
-      pending: { background: "#FFF8E1", color: "#F57F17" },
-    };
-    const s = styles[status] || {};
-    return <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, ...s }}>{status}</span>;
-  };
-
   return (
-    <>
-      <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-      <div style={{ fontFamily: "'Poppins', sans-serif", minHeight: "100vh", background: "#F4F6FB" }}>
-        <Navbar user={user} onLogout={logout} />
-        <div style={{ display: "flex" }}>
-          <Sidebar navigate={navigate} active="Loans" />
-          <div style={{ flex: 1, padding: 32 }}>
-            <div style={{ marginBottom: 24 }}>
-              <h1 style={{ fontSize: 22, fontWeight: 700, color: "#0D1B5E", marginBottom: 4 }}>Loans</h1>
-              <p style={{ fontSize: 13, color: "#999" }}>{loans.length} total loans — view only</p>
-            </div>
+    <Layout user={user} onLogout={logout} role="admin" activePath="/admin">
 
-            <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 1px 4px rgba(0,0,0,0.06)", overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "#F8F9FF" }}>
-                    {["Member", "Amount", "Interest", "Total Due", "Paid", "Due Date", "Purpose", "Status"].map(h => (
-                      <th key={h} style={{ padding: "14px 16px", textAlign: "left", fontSize: 12, fontWeight: 700, color: "#666", borderBottom: "1px solid #eee" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {loans.length === 0 ? (
-                    <tr><td colSpan={8} style={{ padding: 40, textAlign: "center", color: "#999", fontSize: 14 }}>No loans in the system yet.</td></tr>
-                  ) : loans.map(loan => (
-                    <tr key={loan.id} style={{ borderBottom: "1px solid #f5f5f5" }}>
-                      <td style={{ padding: "14px 16px", fontSize: 14, fontWeight: 600, color: "#0D1B5E" }}>{loan.user?.name ?? "—"}</td>
-                      <td style={{ padding: "14px 16px", fontSize: 13, color: "#555" }}>K{Number(loan.amount).toLocaleString()}</td>
-                      <td style={{ padding: "14px 16px", fontSize: 13, color: "#555" }}>{loan.interest_rate}%</td>
-                      <td style={{ padding: "14px 16px", fontSize: 13, color: "#555" }}>K{Number(loan.total_due).toLocaleString()}</td>
-                      <td style={{ padding: "14px 16px", fontSize: 13, color: "#555" }}>K{Number(loan.amount_paid).toLocaleString()}</td>
-                      <td style={{ padding: "14px 16px", fontSize: 13, color: "#555" }}>{loan.due_date}</td>
-                      <td style={{ padding: "14px 16px", fontSize: 13, color: "#555" }}>{loan.purpose || "—"}</td>
-                      <td style={{ padding: "14px 16px" }}>{statusBadge(loan.status)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#111827", marginBottom: 3, letterSpacing: "-0.3px" }}>
+          Welcome back, {user?.name}
+        </h1>
+        <p style={{ fontSize: 13, color: "#9CA3AF" }}>Platform overview across all communities.</p>
       </div>
-    </>
+
+      {/* GLOBAL STATS */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16, marginBottom: 20 }}>
+        {[
+          { label: "Total Communities", value: communities.length, icon: Globe, color: "#2563EB" },
+          { label: "Pending Join Requests", value: pendingRequests, icon: Clock, color: "#D97706" },
+        ].map(c => {
+          const Icon = c.icon;
+          return (
+            <div key={c.label} style={{ ...card }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>{c.label}</div>
+              <div style={{ fontSize: 30, fontWeight: 700, color: "#111827", marginBottom: 8 }}>{c.value}</div>
+              <Icon size={15} color={c.color} strokeWidth={2} />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* QUICK ACTIONS */}
+      <div style={{ marginBottom: 12 }}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Quick Actions</h2>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16, marginBottom: 20 }}>
+        {[
+          { label: "Create Community", desc: "Set up a new Chilimba group", path: "/admin/communities", icon: PlusCircle, color: "#2563EB" },
+          { label: "Add User", desc: "Register a new platform user", path: "/admin/users", icon: Users, color: "#7C3AED" },
+        ].map(a => {
+          const Icon = a.icon;
+          return (
+            <div key={a.label} onClick={() => navigate(a.path)}
+              style={{ ...card, cursor: "pointer", display: "flex", alignItems: "center", gap: 16, transition: "border-color 0.15s" }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = "#BFDBFE"}
+              onMouseLeave={e => e.currentTarget.style.borderColor = "#E8EAED"}>
+              <div style={{ width: 40, height: 40, borderRadius: 8, background: "#F7F8FA", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Icon size={18} color={a.color} />
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 2 }}>{a.label}</div>
+                <div style={{ fontSize: 12, color: "#9CA3AF" }}>{a.desc}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* COMMUNITIES BREAKDOWN */}
+      <div style={{ marginBottom: 12 }}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Communities</h2>
+      </div>
+
+      {communities.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: "48px 24px" }}>
+          <Globe size={28} color="#D1D5DB" style={{ marginBottom: 10 }} />
+          <div style={{ fontSize: 13, color: "#9CA3AF" }}>No communities yet. Create one to get started.</div>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+          {communities.map(c => {
+            const treasurer = c.members?.find(m => m.pivot?.role === "treasurer");
+            const memberCount = c.members?.filter(m => m.pivot?.role === "member").length ?? 0;
+            const communityLoans = loans.filter(l => l.community_id === c.id);
+            const activeLoans = communityLoans.filter(l => l.status === "active").length;
+            const overdueLoans = communityLoans.filter(l => l.status === "overdue").length;
+            const totalDisbursed = communityLoans.reduce((sum, l) => sum + Number(l.amount), 0);
+
+            return (
+              <div key={c.id} style={{ ...card }}>
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: "#111827", marginBottom: 4 }}>{c.name}</div>
+                  <div style={{ fontSize: 12, color: "#9CA3AF" }}>
+                    Treasurer: <span style={{ color: "#374151", fontWeight: 500 }}>{treasurer?.name ?? "—"}</span>
+                  </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+                  {[
+                    { label: "Members", value: memberCount, icon: Users, color: "#2563EB" },
+                    { label: "Active", value: activeLoans, icon: CreditCard, color: "#059669" },
+                    { label: "Overdue", value: overdueLoans, icon: AlertTriangle, color: "#DC2626" },
+                    { label: "Disbursed", value: `K${totalDisbursed.toLocaleString()}`, icon: TrendingUp, color: "#7C3AED" },
+                  ].map(stat => {
+                    const Icon = stat.icon;
+                    return (
+                      <div key={stat.label} style={{ textAlign: "center", padding: "10px 6px", background: "#F9FAFB", borderRadius: 8 }}>
+                        <Icon size={13} color={stat.color} style={{ marginBottom: 5 }} />
+                        <div style={{ fontSize: 15, fontWeight: 700, color: "#111827", marginBottom: 2 }}>{stat.value}</div>
+                        <div style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 500 }}>{stat.label}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Layout>
   );
 }

@@ -22,47 +22,43 @@ export default function TreasurerReports() {
     axios.post(`${API}/logout`, {}, { headers }).finally(() => { localStorage.clear(); navigate("/login"); });
   };
 
-  const handleExport = () => {
-    window.open(`${API}/export/loans`, '_blank');
-  };
-
   const totalDisbursed = loans.reduce((sum, l) => sum + Number(l.amount), 0);
-  const totalRepaid    = loans.reduce((sum, l) => sum + Number(l.amount_paid), 0);
+  const totalRepaid = loans.reduce((sum, l) => sum + Number(l.amount_paid), 0);
   const totalRemaining = loans.reduce((sum, l) => sum + (Number(l.total_due) - Number(l.amount_paid)), 0);
-  const activeCount    = loans.filter(l => l.status === "active").length;
-  const overdueCount   = loans.filter(l => l.status === "overdue").length;
+  const activeCount = loans.filter(l => l.status === "active").length;
+  const overdueCount = loans.filter(l => l.status === "overdue").length;
   const completedCount = loans.filter(l => l.status === "completed").length;
 
   return (
     <Layout user={user} onLogout={logout} role="treasurer" activePath="/treasurer/reports">
-      <div style={{ background: "linear-gradient(135deg, #0F0C29 0%, #302B63 50%, #24243E 100%)", borderRadius: 16, padding: "32px 36px", marginBottom: 28 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: "#fff", marginBottom: 6 }}>Reports</h1>
-        <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Summary statistics and export</p>
+
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#111827", marginBottom: 4 }}>Reports</h1>
+        <p style={{ fontSize: 13, color: "#9CA3AF" }}>Summary statistics and export.</p>
       </div>
 
-      {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, marginBottom: 28 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
         {[
-          { label: "Total Disbursed",  value: `K${totalDisbursed.toLocaleString()}`,  color: "#3B82F6" },
-          { label: "Total Repaid",     value: `K${totalRepaid.toLocaleString()}`,      color: "#10B981" },
-          { label: "Outstanding",      value: `K${totalRemaining.toLocaleString()}`,   color: "#F59E0B" },
-          { label: "Active Loans",     value: activeCount,                             color: "#8B5CF6" },
-          { label: "Overdue Loans",    value: overdueCount,                            color: "#EF4444" },
-          { label: "Completed Loans",  value: completedCount,                          color: "#6B7280" },
+          { label: "Total Disbursed", value: `K${totalDisbursed.toLocaleString()}`, color: "#2563EB" },
+          { label: "Total Repaid", value: `K${totalRepaid.toLocaleString()}`, color: "#059669" },
+          { label: "Outstanding", value: `K${totalRemaining.toLocaleString()}`, color: "#D97706" },
+          { label: "Active Loans", value: activeCount, color: "#7C3AED" },
+          { label: "Overdue Loans", value: overdueCount, color: "#DC2626" },
+          { label: "Completed Loans", value: completedCount, color: "#6B7280" },
         ].map(card => (
-          <div key={card.label} style={{ background: "#fff", borderRadius: 14, padding: 24, border: "1px solid #EAECF0" }}>
-            <div style={{ fontSize: 28, fontWeight: 800, color: card.color, marginBottom: 4 }}>{card.value}</div>
-            <div style={{ fontSize: 13, color: "#6B7280" }}>{card.label}</div>
+          <div key={card.label} style={{ background: "#fff", borderRadius: 10, padding: "20px 24px", border: "1px solid #E5E7EB" }}>
+            <div style={{ fontSize: 11, fontWeight: 500, color: "#9CA3AF", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.06em" }}>{card.label}</div>
+            <div style={{ fontSize: 30, fontWeight: 700, color: "#111827" }}>{card.value}</div>
           </div>
         ))}
       </div>
 
-      {/* Export */}
-      <div style={{ background: "#fff", borderRadius: 14, padding: 32, border: "1px solid #EAECF0", textAlign: "center" }}>
-        <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
-        <h3 style={{ fontSize: 18, fontWeight: 700, color: "#0F0C29", marginBottom: 8 }}>Export Loan Data</h3>
-        <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 24 }}>Download all loan records as a CSV file. Opens in Excel or Google Sheets.</p>
-        <button onClick={handleExport} style={{ padding: "12px 32px", background: "linear-gradient(135deg, #10B981, #059669)", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+      <div style={{ background: "#fff", borderRadius: 10, padding: 32, border: "1px solid #E5E7EB", textAlign: "center" }}>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>📊</div>
+        <h3 style={{ fontSize: 16, fontWeight: 600, color: "#111827", marginBottom: 8 }}>Export Loan Data</h3>
+        <p style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 24 }}>Download all loan records as a CSV file. Opens in Excel or Google Sheets.</p>
+        <button onClick={() => window.open(`${API}/export/loans`, '_blank')}
+          style={{ padding: "10px 28px", background: "#059669", color: "#fff", border: "none", borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
           ⬇ Export to CSV
         </button>
       </div>
