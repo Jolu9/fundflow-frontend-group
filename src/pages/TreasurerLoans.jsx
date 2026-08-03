@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, ChevronDown, ChevronUp } from "lucide-react";
+import { X, ChevronDown, ChevronUp, Wallet, Users } from "lucide-react";
 import axios from "axios";
 import Layout from "../components/Layout";
 
@@ -32,10 +32,9 @@ export default function TreasurerLoans() {
       setMembers(communityMembers);
 
       axios.get(`${API}/loans`, { headers }).then(res => {
-        const filtered = res.data.filter(l => l.community_id === myComm.id);
+        const filtered = res.data.filter(l => String(l.community_id) === String(myComm.id));
         setLoans(filtered);
 
-        // Auto-expand members with pending loans
         const autoExpand = {};
         filtered.filter(l => l.status === "pending").forEach(l => {
           autoExpand[l.user_id] = true;
@@ -92,7 +91,6 @@ export default function TreasurerLoans() {
     setExpandedMembers(prev => ({ ...prev, [userId]: !prev[userId] }));
   };
 
-  // Group loans by member
   const grouped = members.map(member => {
     const memberLoans = loans.filter(l => l.user_id === member.id);
     const totalDue = memberLoans.reduce((sum, l) => sum + Number(l.total_due), 0);
@@ -101,6 +99,9 @@ export default function TreasurerLoans() {
     const hasOverdue = memberLoans.some(l => l.status === "overdue");
     return { member, loans: memberLoans, totalDue, totalPaid, hasPending, hasOverdue };
   }).filter(g => g.loans.length > 0);
+
+  const totalOutstanding = loans.filter(l => l.status === "active" || l.status === "overdue")
+    .reduce((sum, l) => sum + (Number(l.total_due) - Number(l.amount_paid)), 0);
 
   const statusBadge = (status) => {
     const styles = {
@@ -198,6 +199,29 @@ export default function TreasurerLoans() {
         </button>
       </div>
 
+      {/* STATS */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16, marginBottom: 20 }}>
+        <div style={{ background: "#fff", borderRadius: 10, border: "1px solid #E5E7EB", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", padding: "18px 20px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: "#FEF2F2", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Wallet size={16} color="#DC2626" />
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.04em" }}>Outstanding Balance</div>
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#111827" }}>K{totalOutstanding.toLocaleString()}</div>
+        </div>
+
+        <div style={{ background: "#fff", borderRadius: 10, border: "1px solid #E5E7EB", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", padding: "18px 20px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Users size={16} color="#2563EB" />
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.04em" }}>Members</div>
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#111827" }}>{grouped.length} of {members.length}</div>
+        </div>
+      </div>
+
       {/* ISSUE FORM */}
       {showForm && (
         <div style={{ background: "#fff", borderRadius: 10, padding: 24, marginBottom: 20, border: "1px solid #E5E7EB", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
@@ -206,8 +230,7 @@ export default function TreasurerLoans() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 16 }}>
             <div>
               <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Member</label>
-              <select value={form.user_id} onChange={e => setForm({ ...form, user_id: e.target.value })}
-                style={{ ...inputStyle }}>
+              <select value={form.user_id} onChange={e => setForm({ ...form, user_id: e.target.value })} style={{ ...inputStyle }}>
                 <option value="">Select member</option>
                 {members.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
@@ -244,7 +267,6 @@ export default function TreasurerLoans() {
             return (
               <div key={member.id} style={{ background: "#fff", borderRadius: 10, border: `1px solid ${hasPending ? "#FDE68A" : hasOverdue ? "#FECACA" : "#E5E7EB"}`, boxShadow: "0 1px 4px rgba(0,0,0,0.05)", overflow: "hidden" }}>
 
-                {/* Member header row */}
                 <div onClick={() => toggleMember(member.id)}
                   style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", background: hasPending ? "#FFFBEB" : hasOverdue ? "#FFF5F5" : "#fff" }}>
 
@@ -255,8 +277,15 @@ export default function TreasurerLoans() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                       <div style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>{member.name}</div>
-                      {hasPending && <span style={{ fontSize: 10, fontWeight: 700, background: "#FEF3C7", color: "#D97706", padding: "2px 7px", borderRadius: 10 }}>PENDING REVIEW</span>}
-                      {hasOverdue && <span style={{ fontSize: 10, fontWeight: 700, background: "#FEF2F2", color: "#DC2626", padding: "2px 7px", borderRadius: 10 }}>OVERDUE</span>}
+                      {hasPending && (
+                        <span style={{ fontSize: 10, fontWeight: 700, background: "#FEF3C7", color: "#D97706", padding: "2px 7px", borderRadius: 10 }}>PENDING REVIEW</span>
+                      )}
+                      {hasOverdue && !hasPending && (
+                        <span style={{ fontSize: 10, fontWeight: 700, background: "#FEF2F2", color: "#DC2626", padding: "2px 7px", borderRadius: 10 }}>OVERDUE</span>
+                      )}
+                      {hasOverdue && hasPending && (
+                        <span style={{ fontSize: 10, fontWeight: 700, background: "#FEF2F2", color: "#DC2626", padding: "2px 7px", borderRadius: 10 }}>HAS OVERDUE</span>
+                      )}
                     </div>
                     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                       <div style={{ flex: 1, background: "#F3F4F6", borderRadius: 99, height: 5, maxWidth: 180 }}>
@@ -276,7 +305,6 @@ export default function TreasurerLoans() {
                   </div>
                 </div>
 
-                {/* Expanded loans */}
                 {isExpanded && (
                   <div style={{ borderTop: "1px solid #F3F4F6" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>

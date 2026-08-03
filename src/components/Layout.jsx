@@ -1,43 +1,43 @@
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, CreditCard, ClipboardList, BarChart3, FileText, UserCircle, LogOut, PiggyBank, Globe } from "lucide-react";
+import { LayoutDashboard, Users, CreditCard, ClipboardList, BarChart3, FileText, UserCircle, LogOut, PiggyBank, Globe, RefreshCw } from "lucide-react";
+
 const adminNav = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/admin" },
-  { label: "Communities", icon: Globe, path: "/admin/communities" },
+  { label: "Groups", icon: Globe, path: "/admin/groups" },
   { label: "Users", icon: Users, path: "/admin/users" },
-
 ];
 
-const memberNav = [
+const getMemberNav = (chilimbaEnabled) => [
   { label: "Dashboard", icon: LayoutDashboard, path: "/member" },
   { label: "My Loans", icon: CreditCard, path: "/member/loans" },
   { label: "Apply for Loan", icon: FileText, path: "/member/apply" },
   { label: "Repayments", icon: ClipboardList, path: "/member/repayments" },
   { label: "Contributions", icon: PiggyBank, path: "/member/contributions" },
+  ...(chilimbaEnabled ? [{ label: "Cycles", icon: RefreshCw, path: "/member/cycles" }] : []),
   { label: "Profile", icon: UserCircle, path: "/member/profile" },
 ];
 
-const treasurerNav = [
+const getTreasurerNav = (chilimbaEnabled) => [
   { label: "Dashboard", icon: LayoutDashboard, path: "/treasurer" },
   { label: "Members", icon: Users, path: "/treasurer/users" },
   { label: "Loans", icon: CreditCard, path: "/treasurer/loans" },
   { label: "Repayments", icon: ClipboardList, path: "/treasurer/repayments" },
   { label: "Contributions", icon: PiggyBank, path: "/treasurer/contributions" },
+  { label: "Cycles", icon: RefreshCw, path: "/treasurer/cycles", disabled: !chilimbaEnabled },
   { label: "Reports", icon: BarChart3, path: "/treasurer/reports" },
 ];
 
-export default function Layout({ children, user, onLogout, role = "admin", activePath }) {
+export default function Layout({ children, user, onLogout, role = "admin", activePath, chilimbaEnabled = false, memberChilimbaEnabled = false }) {
   const navigate = useNavigate();
-  const nav = role === "member" ? memberNav : role === "treasurer" ? treasurerNav : adminNav;
+  const nav = role === "member" ? getMemberNav(memberChilimbaEnabled) : role === "treasurer" ? getTreasurerNav(chilimbaEnabled) : adminNav;
 
   return (
     <>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
       <div style={{ fontFamily: "'Inter', sans-serif", minHeight: "100vh", display: "flex" }}>
 
-        {/* SIDEBAR */}
         <div style={{ width: 220, background: "linear-gradient(160deg, #0F2460, #1E3A8A 60%, #2563EB)", minHeight: "100vh", display: "flex", flexDirection: "column", position: "sticky", top: 0, flexShrink: 0, overflow: "hidden" }}>
 
-          {/* Wave pattern overlay */}
           <svg width="100%" height="100%" style={{ position: "absolute", inset: 0, opacity: 0.10, pointerEvents: "none" }} preserveAspectRatio="none">
             <defs>
               <pattern id="sidebarWaves" x="0" y="0" width="180" height="180" patternUnits="userSpaceOnUse">
@@ -53,18 +53,17 @@ export default function Layout({ children, user, onLogout, role = "admin", activ
             <rect width="100%" height="100%" fill="url(#sidebarWaves)" />
           </svg>
 
-          {/* Logo */}
           <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", position: "relative", zIndex: 1 }}>
             <div style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>
               Fund<span style={{ color: "#93C5FD" }}>Flow</span>
             </div>
           </div>
 
-          {/* Nav items */}
           <div style={{ padding: "12px 0", flex: 1, position: "relative", zIndex: 1 }}>
             {nav.map(item => {
               const Icon = item.icon;
               const isActive = activePath === item.path;
+              const isDisabled = item.disabled ?? false;
               return (
                 <div key={item.label} onClick={() => navigate(item.path)}
                   style={{
@@ -77,20 +76,22 @@ export default function Layout({ children, user, onLogout, role = "admin", activ
                     borderRadius: 7,
                     fontSize: 13,
                     fontWeight: isActive ? 600 : 400,
-                    color: isActive ? "#fff" : "rgba(255,255,255,0.55)",
+                    color: isActive ? "#fff" : isDisabled ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.55)",
                     background: isActive ? "rgba(255,255,255,0.12)" : "transparent",
                     transition: "all 0.12s"
                   }}
                   onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
                   onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent"; }}>
-                  <Icon size={16} strokeWidth={isActive ? 2.2 : 1.8} color={isActive ? "#fff" : "rgba(255,255,255,0.45)"} />
+                  <Icon size={16} strokeWidth={isActive ? 2.2 : 1.8} color={isActive ? "#fff" : isDisabled ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.45)"} />
                   {item.label}
+                  {isDisabled && (
+                    <span style={{ marginLeft: "auto", fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Off</span>
+                  )}
                 </div>
               );
             })}
           </div>
 
-          {/* Logout at bottom */}
           <div style={{ padding: "16px 10px", borderTop: "1px solid rgba(255,255,255,0.08)", position: "relative", zIndex: 1 }}>
             <div onClick={onLogout}
               style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", borderRadius: 7, fontSize: 13, color: "rgba(255,255,255,0.5)", transition: "all 0.12s" }}
@@ -102,10 +103,7 @@ export default function Layout({ children, user, onLogout, role = "admin", activ
           </div>
         </div>
 
-        {/* RIGHT SIDE */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-
-          {/* TOPBAR */}
           <div style={{ background: "#fff", borderBottom: "1px solid #E5E7EB", padding: "0 28px", height: 56, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 14, position: "sticky", top: 0, zIndex: 100 }}>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{user?.name}</div>
@@ -116,7 +114,6 @@ export default function Layout({ children, user, onLogout, role = "admin", activ
             </div>
           </div>
 
-          {/* MAIN CONTENT */}
           <div style={{ flex: 1, padding: "28px 32px", background: "#F0F2F5", minWidth: 0 }}>
             {children}
           </div>

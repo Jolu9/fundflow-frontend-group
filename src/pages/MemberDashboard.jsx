@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CreditCard, AlertTriangle, CheckCircle, Wallet, FileText, ClipboardList } from "lucide-react";
+import { CreditCard, AlertTriangle, CheckCircle, Wallet, Landmark, PiggyBank, ShieldCheck, RefreshCw } from "lucide-react";
 import axios from "axios";
 import Layout from "../components/Layout";
 
@@ -16,9 +16,13 @@ const card = {
 export default function MemberDashboard() {
   const [user, setUser] = useState(null);
   const [community, setCommunity] = useState(null);
+  const [treasurer, setTreasurer] = useState(null);
+  const [fundSummary, setFundSummary] = useState(null);
   const [loans, setLoans] = useState([]);
   const [contributions, setContributions] = useState([]);
   const [checkingCommunity, setCheckingCommunity] = useState(true);
+  const [chilimbaEnabled, setChilimbaEnabled] = useState(false);
+  const [currentCycle, setCurrentCycle] = useState(null);
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
@@ -30,7 +34,20 @@ export default function MemberDashboard() {
     axios.get(`${API}/member/contributions`, { headers }).then(res => setContributions(res.data)).catch(() => {});
     axios.get(`${API}/communities/my`, { headers }).then(res => {
       if (res.data.length > 0) {
-        setCommunity(res.data[0]);
+        const comm = res.data[0];
+        setCommunity(comm);
+        const t = comm.members?.find(m => m.pivot?.role === "treasurer");
+        if (t) setTreasurer(t);
+        if (comm.fund_summary) setFundSummary(comm.fund_summary);
+        const enabled = comm.chilimba_enabled ?? false;
+        setChilimbaEnabled(enabled);
+        if (enabled) {
+          axios.get(`${API}/member/cycles`, { headers }).then(res => {
+            const cycles = res.data;
+            const active = cycles.find(c => c.status === "active") ?? cycles.find(c => c.status === "pending") ?? null;
+            setCurrentCycle(active);
+          }).catch(() => {});
+        }
         setCheckingCommunity(false);
       } else {
         navigate("/setup");
@@ -59,20 +76,87 @@ export default function MemberDashboard() {
     { label: "Balance Remaining", value: `K${activeBalance.toLocaleString()}`, icon: Wallet, color: "#7C3AED" },
   ];
 
-  return (
-    <Layout user={user} onLogout={logout} role="member" activePath="/member">
+  const isCurrentRecipient = currentCycle?.recipient_id === user?.id;
 
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#111827", marginBottom: 4 }}>
-          Welcome back, {user?.name}
-        </h1>
-        <p style={{ fontSize: 13, color: "#9CA3AF" }}>
-          {community
-            ? <>Member of <span style={{ fontWeight: 600, color: "#1E3A8A" }}>{community.name}</span></>
-            : "You're not in a community yet."}
-        </p>
+  return (
+    <Layout user={user} onLogout={logout} role="member" activePath="/member" memberChilimbaEnabled={chilimbaEnabled}>
+
+      {/* WELCOME + TREASURER */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: "#111827", marginBottom: 4 }}>
+            Welcome back, {user?.name}
+          </h1>
+          <p style={{ fontSize: 13, color: "#9CA3AF" }}>
+            {community
+              ? <>Member of <span style={{ fontWeight: 600, color: "#1E3A8A" }}>{community.name}</span></>
+              : "You're not in a community yet."}
+          </p>
+        </div>
+
+        {treasurer && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#F8FAFF", border: "1px solid #DBEAFE", borderRadius: 10, padding: "10px 16px" }}>
+            <div style={{ width: 34, height: 34, borderRadius: 8, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <ShieldCheck size={16} color="#2563EB" />
+            </div>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>Your Treasurer</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>{treasurer.name}</div>
+              {treasurer.phone && <div style={{ fontSize: 11, color: "#6B7280", marginTop: 1 }}>{treasurer.phone}</div>}
+              {treasurer.email && <div style={{ fontSize: 11, color: "#6B7280" }}>{treasurer.email}</div>}
+            </div>
+          </div>
+        )}
       </div>
 
+      {/* GROUP FUND */}
+      {fundSummary && (
+        <div style={{ ...card, padding: "18px 24px", marginBottom: 20, display: "flex", gap: 32, alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
+            <Wallet size={15} color="#9CA3AF" />
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em" }}>Group Fund</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>Current Fund</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "#111827" }}>K{Number(fundSummary.current_fund).toLocaleString()}</div>
+          </div>
+          <div style={{ borderLeft: "1px solid #F3F4F6", paddingLeft: 32 }}>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>Total Contributed</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#374151" }}>K{Number(fundSummary.total_contributed).toLocaleString()}</div>
+          </div>
+          <div style={{ borderLeft: "1px solid #F3F4F6", paddingLeft: 32 }}>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>Total Disbursed</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#374151" }}>K{Number(fundSummary.total_disbursed).toLocaleString()}</div>
+          </div>
+        </div>
+      )}
+
+      {/* CHILIMBA CYCLE CARD */}
+      {chilimbaEnabled && currentCycle && (
+        <div onClick={() => navigate("/member/cycles")}
+          style={{ ...card, padding: "16px 20px", marginBottom: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", background: isCurrentRecipient ? "linear-gradient(135deg, #F0FDF4, #DCFCE7)" : "#fff", border: isCurrentRecipient ? "1.5px solid #86EFAC" : "1px solid #E8EAED" }}
+          onMouseEnter={e => e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.10)"}
+          onMouseLeave={e => e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.06)"}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: isCurrentRecipient ? "#DCFCE7" : "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <RefreshCw size={17} color={isCurrentRecipient ? "#059669" : "#2563EB"} />
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>
+                Chilimba — Cycle {currentCycle.cycle_number}
+                {isCurrentRecipient && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: "#059669", background: "#D1FAE5", padding: "2px 8px", borderRadius: 99 }}>You're receiving!</span>}
+              </div>
+              <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}>
+                Pot: K{Number(currentCycle.pot_amount ?? 0).toLocaleString()}
+                {currentCycle.recipient && <> · {isCurrentRecipient ? "Assigned to you" : `Recipient: ${currentCycle.recipient.name}`}</>}
+              </div>
+            </div>
+          </div>
+          <span style={{ fontSize: 12, fontWeight: 600, color: isCurrentRecipient ? "#059669" : "#2563EB" }}>View →</span>
+        </div>
+      )}
+
+      {/* OVERDUE WARNING */}
       {overdueLoans.length > 0 && (
         <div style={{
           background: "#FEF2F2", border: "1.5px solid #FECACA", borderLeft: "4px solid #DC2626",
@@ -91,7 +175,7 @@ export default function MemberDashboard() {
       )}
 
       {/* STAT CARDS */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 20 }}>
         {cards.map(c => {
           const Icon = c.icon;
           return (
@@ -104,18 +188,45 @@ export default function MemberDashboard() {
         })}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+      {/* QUICK ACTION TILES */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+        <div onClick={() => navigate("/member/apply")} style={{ position: "relative", borderRadius: 14, overflow: "hidden", cursor: "pointer", boxShadow: "0 4px 20px rgba(37,99,235,0.25)" }}>
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, #1E3A8A, #2563EB)", opacity: 0.92 }} />
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 80% 20%, rgba(255,255,255,0.12), transparent 60%)" }} />
+          <div style={{ position: "relative", zIndex: 1, padding: "22px 24px", display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Landmark size={20} color="#fff" />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 3 }}>Apply for Loan</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>Submit a new loan application</div>
+            </div>
+          </div>
+        </div>
+
+        <div onClick={() => navigate("/member/contributions")} style={{ position: "relative", borderRadius: 14, overflow: "hidden", cursor: "pointer", boxShadow: "0 4px 20px rgba(5,150,105,0.25)" }}>
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, #065F46, #059669)", opacity: 0.92 }} />
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 80% 20%, rgba(255,255,255,0.12), transparent 60%)" }} />
+          <div style={{ position: "relative", zIndex: 1, padding: "22px 24px", display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <PiggyBank size={20} color="#fff" />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 3 }}>Make Contribution</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>Record a new savings contribution</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
 
         {/* CURRENT LOANS */}
         <div style={{ ...card, padding: "22px 24px" }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: "#111827", marginBottom: 20 }}>Current Loans</div>
           {currentLoans.length === 0 ? (
             <div style={{ textAlign: "center", padding: "28px 0" }}>
-              <div style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 16 }}>No active loans.</div>
-              <button onClick={() => navigate("/member/apply")}
-                style={{ padding: "9px 24px", background: "#1E3A8A", color: "#fff", border: "none", borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                Apply for a Loan
-              </button>
+              <div style={{ fontSize: 13, color: "#9CA3AF" }}>No active loans.</div>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -160,69 +271,62 @@ export default function MemberDashboard() {
                   </div>
                 );
               })}
-              <button onClick={() => navigate("/member/repayments")}
-                style={{ width: "100%", padding: "10px", background: "#1E3A8A", color: "#fff", border: "none", borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                View Repayments
-              </button>
             </div>
           )}
         </div>
 
-        {/* RECENT CONTRIBUTIONS */}
+        {/* CONTRIBUTIONS */}
         <div style={{ ...card, padding: "22px 24px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>My Contributions</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#059669" }}>K{totalContributed.toLocaleString()}</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 30, height: 30, borderRadius: 8, background: "#F0FDF4", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <PiggyBank size={16} color="#059669" />
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>My Contributions</div>
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#059669" }}>K{totalContributed.toLocaleString()}</div>
           </div>
-          <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 20 }}>
+          <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 16 }}>
             {contributions.length} contribution{contributions.length !== 1 ? "s" : ""} total
           </div>
+
           {recentContributions.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "28px 0", color: "#9CA3AF", fontSize: 13 }}>No contributions yet.</div>
+            <div style={{ textAlign: "center", padding: "32px 0" }}>
+              <PiggyBank size={36} color="#D1D5DB" style={{ marginBottom: 10 }} />
+              <div style={{ fontSize: 13, color: "#9CA3AF" }}>No contributions yet.</div>
+              <div style={{ fontSize: 12, color: "#D1D5DB", marginTop: 4 }}>Your savings will appear here.</div>
+            </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {recentContributions.map(c => (
-                <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#F9FAFB", borderRadius: 8, border: "1px solid #F3F4F6" }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#059669" }}>K{Number(c.amount).toLocaleString()}</div>
-                    <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>
-                      {new Date(c.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {recentContributions.map((c, i) => (
+                <div key={c.id} style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "12px 14px", borderRadius: 10,
+                  background: i === 0 ? "linear-gradient(135deg, #F0FDF4, #DCFCE7)" : "#F9FAFB",
+                  border: `1px solid ${i === 0 ? "#BBF7D0" : "#F3F4F6"}`,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: i === 0 ? "#059669" : "#D1D5DB", flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#059669" }}>K{Number(c.amount).toLocaleString()}</div>
+                      <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 1 }}>
+                        {new Date(c.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                      </div>
                     </div>
                   </div>
-                  <CheckCircle size={16} color="#059669" />
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600, color: "#059669" }}>
+                    <CheckCircle size={13} color="#059669" /> Paid
+                  </div>
                 </div>
               ))}
             </div>
           )}
+
           <button onClick={() => navigate("/member/contributions")}
-            style={{ marginTop: 16, width: "100%", padding: "8px", background: "none", border: "1px solid #E8EAED", borderRadius: 7, fontSize: 12, color: "#6B7280", cursor: "pointer", fontFamily: "inherit" }}>
+            style={{ marginTop: 16, width: "100%", padding: "9px", background: "linear-gradient(135deg, #059669, #10B981)", color: "#fff", border: "none", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
             View all contributions →
           </button>
         </div>
-      </div>
-
-      {/* QUICK LINKS */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        {[
-          { label: "Apply for Loan", desc: "Submit a new loan application", path: "/member/apply", icon: FileText, color: "#2563EB" },
-          { label: "View Repayments", desc: "See your full repayment history", path: "/member/repayments", icon: ClipboardList, color: "#059669" },
-        ].map(a => {
-          const Icon = a.icon;
-          return (
-            <div key={a.label} onClick={() => navigate(a.path)}
-              style={{ ...card, padding: "18px 20px", cursor: "pointer", display: "flex", alignItems: "center", gap: 14, transition: "border-color 0.15s" }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = "#BFDBFE"}
-              onMouseLeave={e => e.currentTarget.style.borderColor = "#E8EAED"}>
-              <div style={{ width: 38, height: 38, borderRadius: 8, background: "#F7F8FA", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <Icon size={17} color={a.color} />
-              </div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#111827", marginBottom: 2 }}>{a.label}</div>
-                <div style={{ fontSize: 12, color: "#9CA3AF" }}>{a.desc}</div>
-              </div>
-            </div>
-          );
-        })}
       </div>
     </Layout>
   );

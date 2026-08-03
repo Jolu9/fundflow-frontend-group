@@ -2,6 +2,8 @@ import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+const API = "http://localhost:8000/api";
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -11,13 +13,29 @@ export default function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post("http://localhost:8000/api/login", { email, password });
+      const res = await axios.post(`${API}/login`, { email, password });
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("role", res.data.role);
       const role = res.data.role;
-      if (role === "admin") navigate("/admin");
-      else if (role === "treasurer") navigate("/treasurer");
-      else navigate("/member");
+      const headers = { Authorization: `Bearer ${res.data.token}` };
+
+      if (role === "admin") {
+        navigate("/admin");
+      } else if (role === "treasurer") {
+        navigate("/treasurer");
+      } else {
+        // Member: check if they belong to a community before deciding
+        try {
+          const commRes = await axios.get(`${API}/communities/my`, { headers });
+          if (commRes.data.length > 0) {
+            navigate("/member");
+          } else {
+            navigate("/setup");
+          }
+        } catch {
+          navigate("/setup");
+        }
+      }
     } catch {
       setError("Invalid email or password.");
     }

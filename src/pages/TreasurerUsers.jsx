@@ -1,16 +1,24 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { UserPlus, X } from "lucide-react";
+import { UserPlus, X, Check, UserX, Clock } from "lucide-react";
 import axios from "axios";
 import Layout from "../components/Layout";
 
 const API = "http://localhost:8000/api";
+
+const card = {
+  background: "#fff",
+  borderRadius: 14,
+  border: "1px solid #E8EAED",
+  boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+};
 
 export default function TreasurerUsers() {
   const [user, setUser] = useState(null);
   const [community, setCommunity] = useState(null);
   const [members, setMembers] = useState([]);
   const [allMembers, setAllMembers] = useState([]);
+  const [joinRequests, setJoinRequests] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [error, setError] = useState("");
@@ -25,7 +33,12 @@ export default function TreasurerUsers() {
       const comm = res.data[0];
       setCommunity(comm);
       setMembers(comm.members?.filter(m => m.pivot?.role === "member") ?? []);
+      fetchJoinRequests(comm.id);
     }).catch(() => {}).finally(() => setLoading(false));
+  };
+
+  const fetchJoinRequests = (communityId) => {
+    axios.get(`${API}/join-requests?community_id=${communityId}`, { headers }).then(res => setJoinRequests(res.data)).catch(() => {});
   };
 
   useEffect(() => {
@@ -58,6 +71,15 @@ export default function TreasurerUsers() {
     fetchCommunity();
   };
 
+  const handleJoinRequest = async (id, status) => {
+    try {
+      await axios.patch(`${API}/join-requests/${id}`, { status }, { headers });
+      fetchCommunity();
+    } catch (e) {
+      alert("Failed to update request.");
+    }
+  };
+
   return (
     <Layout user={user} onLogout={logout} role="treasurer" activePath="/treasurer/users">
 
@@ -71,6 +93,38 @@ export default function TreasurerUsers() {
           <UserPlus size={15} /> Add Member
         </button>
       </div>
+
+      {/* PENDING JOIN REQUESTS */}
+      {joinRequests.length > 0 && (
+        <div style={{ ...card, padding: 20, marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <Clock size={15} color="#D97706" />
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>Pending Join Requests</h3>
+            <span style={{ background: "#FEF3C7", color: "#D97706", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20 }}>{joinRequests.length}</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {joinRequests.map(req => (
+              <div key={req.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", background: "#FAFAFA", borderRadius: 10, border: "1px solid #F3F4F6" }}>
+                <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#1E3A8A", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff", flexShrink: 0 }}>
+                  {req.user?.name?.[0]?.toUpperCase()}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{req.user?.name}</div>
+                  <div style={{ fontSize: 12, color: "#9CA3AF" }}>{req.user?.email}</div>
+                </div>
+                <button onClick={() => handleJoinRequest(req.id, "approved")}
+                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", background: "#ECFDF5", color: "#059669", border: "1px solid #BBF7D0", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                  <Check size={13} /> Approve
+                </button>
+                <button onClick={() => handleJoinRequest(req.id, "rejected")}
+                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", background: "#FEF2F2", color: "#DC2626", border: "1px solid #FECACA", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                  <UserX size={13} /> Reject
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ADD MEMBER MODAL */}
       {showAdd && (
@@ -120,7 +174,7 @@ export default function TreasurerUsers() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#F9FAFB" }}>
-                {["#", "Name", "Email", "Joined", ""].map(h => (
+                {["#", "Name", "Email", "Phone", "Joined", ""].map(h => (
                   <th key={h} style={{ padding: "10px 20px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#9CA3AF", borderBottom: "1px solid #E5E7EB" }}>{h}</th>
                 ))}
               </tr>
@@ -131,15 +185,16 @@ export default function TreasurerUsers() {
                   onMouseEnter={e => e.currentTarget.style.background = "#FAFAFA"}
                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                   <td style={{ padding: "13px 20px", fontSize: 13, color: "#9CA3AF" }}>{i + 1}</td>
-                  <td style={{ padding: "13px 20px" }}>
+                  <td style={{ padding: "13px 20px", cursor: "pointer" }} onClick={() => navigate(`/treasurer/members/${m.id}`)}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#1E3A8A", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#fff" }}>
                         {m.name?.[0]?.toUpperCase()}
                       </div>
-                      <span style={{ fontSize: 13, fontWeight: 500, color: "#111827" }}>{m.name}</span>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: "#2563EB" }}>{m.name}</span>
                     </div>
                   </td>
                   <td style={{ padding: "13px 20px", fontSize: 13, color: "#6B7280" }}>{m.email}</td>
+                  <td style={{ padding: "13px 20px", fontSize: 13, color: "#6B7280" }}>{m.phone || "—"}</td>
                   <td style={{ padding: "13px 20px", fontSize: 13, color: "#9CA3AF" }}>{new Date(m.created_at).toLocaleDateString()}</td>
                   <td style={{ padding: "13px 20px" }}>
                     <button onClick={() => handleRemove(m.id)}

@@ -5,21 +5,10 @@ import axios from "axios";
 const API = "http://localhost:8000/api";
 
 export default function Register() {
-  const [form, setForm] = useState({ name: "", email: "", password: "", invite_code: "" });
-  const [preview, setPreview] = useState(null);
+  const [form, setForm] = useState({ name: "", email: "", password: "", phone: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-
-  const checkInviteCode = async (code) => {
-    if (code.length < 6) { setPreview(null); return; }
-    try {
-      const res = await axios.get(`${API}/communities/invite/${code}`);
-      setPreview(res.data);
-    } catch {
-      setPreview(null);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,11 +17,7 @@ export default function Register() {
       const res = await axios.post(`${API}/register`, form);
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("role", res.data.role);
-      if (res.data.community) {
-        navigate("/member");
-      } else {
-        navigate("/setup");
-      }
+      navigate("/setup");
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed.");
     }
@@ -96,27 +81,19 @@ export default function Register() {
               </div>
 
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Password</label>
-                <input type="password" placeholder="Min. 6 characters" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Phone Number</label>
+                <input type="tel" placeholder="e.g. 0971000000" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} required
                   style={{ width: "100%", padding: "11px 14px", border: "1.5px solid #E5E7EB", borderRadius: 8, fontSize: 13, fontFamily: "inherit", outline: "none", background: "#F9FAFB", boxSizing: "border-box" }}
                   onFocus={e => e.target.style.border = "1.5px solid #2563EB"}
                   onBlur={e => e.target.style.border = "1.5px solid #E5E7EB"} />
               </div>
 
               <div style={{ marginBottom: 24 }}>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                  Invite Code <span style={{ fontWeight: 400, color: "#9CA3AF" }}>(optional — if you have one)</span>
-                </label>
-                <input type="text" placeholder="e.g. AB12CD34" value={form.invite_code}
-                  onChange={e => { setForm({ ...form, invite_code: e.target.value.toUpperCase() }); checkInviteCode(e.target.value); }}
-                  style={{ width: "100%", padding: "11px 14px", border: "1.5px solid #E5E7EB", borderRadius: 8, fontSize: 13, fontFamily: "inherit", outline: "none", background: "#F9FAFB", boxSizing: "border-box", letterSpacing: "0.05em" }}
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Password</label>
+                <input type="password" placeholder="Min. 6 characters" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required
+                  style={{ width: "100%", padding: "11px 14px", border: "1.5px solid #E5E7EB", borderRadius: 8, fontSize: 13, fontFamily: "inherit", outline: "none", background: "#F9FAFB", boxSizing: "border-box" }}
                   onFocus={e => e.target.style.border = "1.5px solid #2563EB"}
                   onBlur={e => e.target.style.border = "1.5px solid #E5E7EB"} />
-                {preview && (
-                  <div style={{ marginTop: 8, padding: "10px 12px", background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 7, fontSize: 12, color: "#166534" }}>
-                    You will join: <strong>{preview.name}</strong>
-                  </div>
-                )}
               </div>
 
               <button type="submit" disabled={loading}

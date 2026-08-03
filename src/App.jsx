@@ -16,21 +16,28 @@ import TreasurerUsers from "./pages/TreasurerUsers";
 import MemberProfile from "./pages/MemberProfile";
 import TreasurerContributions from "./pages/TreasurerContributions";
 import MemberContributions from "./pages/MemberContributions";
-import AdminCommunities from "./pages/AdminCommunities";
+import AdminGroups from "./pages/AdminGroups";
+import AdminGroupDetail from "./pages/AdminGroupDetail";
 import Register from "./pages/Register";
 import Setup from "./pages/Setup";
+import TreasurerMemberProfile from "./pages/TreasurerMemberProfile";
+import TreasurerCycles from "./pages/TreasurerCycles";
+import MemberCycles from "./pages/MemberCycles";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/treasurer/members/:id" element={<TreasurerMemberProfile />} />
         <Route path="/register" element={<Register />} />
-<Route path="/setup" element={<Setup />} />
+        <Route path="/setup" element={<Setup />} />
         <Route path="/treasurer/contributions" element={<TreasurerContributions />} />
-<Route path="/member/contributions" element={<MemberContributions />} />
+        <Route path="/member/contributions" element={<MemberContributions />} />
         <Route path="/member/profile" element={<MemberProfile />} />
         <Route path="/treasurer/users" element={<TreasurerUsers />} />
         <Route path="/treasurer/reports" element={<TreasurerReports />} />
+        <Route path="/treasurer/cycles" element={<TreasurerCycles />} />
+        <Route path="/member/cycles" element={<MemberCycles />} />
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/admin" element={<AdminDashboard />} />
@@ -39,7 +46,8 @@ function App() {
         <Route path="/member" element={<MemberDashboard />} />
         <Route path="/member/loans" element={<MemberLoans />} />
         <Route path="/member/apply" element={<MemberApply />} />
-        <Route path="/admin/communities" element={<AdminCommunities />} />
+        <Route path="/admin/groups" element={<AdminGroups />} />
+        <Route path="/admin/groups/:id" element={<AdminGroupDetail />} />
         <Route path="/member/repayments" element={<MemberRepayments />} />
         <Route path="/treasurer" element={<TreasurerDashboard />} />
         <Route path="/treasurer/loans" element={<TreasurerLoans />} />
