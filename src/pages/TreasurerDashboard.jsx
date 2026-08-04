@@ -160,7 +160,7 @@ export default function TreasurerDashboard() {
   };
 
   const totalContributedAllTime = contributions.reduce((sum, c) => sum + Number(c.amount), 0);
-  const currentFund = Math.max(0, totalContributedAllTime + totalRepaid - totalDisbursed);
+  const currentFund = Number(community?.fund_summary?.current_fund ?? 0);
 
   const now = new Date();
   const thisMonth = contributions.filter(c => {

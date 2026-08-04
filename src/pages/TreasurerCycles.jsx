@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { RefreshCw, Plus, CheckCircle, User } from "lucide-react";
+import { RefreshCw, Plus, CheckCircle, User, Wallet } from "lucide-react";
 import axios from "axios";
 import Layout from "../components/Layout";
 
@@ -36,20 +36,21 @@ export default function TreasurerCycles() {
   const [chilimbaEnabled, setChilimbaEnabled] = useState(false);
   const [contributionAmount, setContributionAmount] = useState("");
   const [savedAmount, setSavedAmount] = useState(0);
+  const [currentFund, setCurrentFund] = useState(0);
+  const [newPotAmount, setNewPotAmount] = useState("");
   const [newPayoutDate, setNewPayoutDate] = useState("");
   const [newNotes, setNewNotes] = useState("");
   const [assigningCycleId, setAssigningCycleId] = useState(null);
   const [selectedRecipient, setSelectedRecipient] = useState("");
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
   const [toggling, setToggling] = useState(false);
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
 
-  useEffect(() => {
-    if (!token) { navigate("/login"); return; }
-    axios.get(`${API}/me`, { headers }).then(res => setUser(res.data)).catch(() => { localStorage.clear(); navigate("/login"); });
+  const loadCommunity = () => {
     axios.get(`${API}/communities/my`, { headers }).then(res => {
       if (res.data.length === 0) return;
       const comm = res.data[0];
@@ -57,9 +58,18 @@ export default function TreasurerCycles() {
       setSavedAmount(Number(comm.contribution_amount ?? 0));
       setContributionAmount(String(comm.contribution_amount ?? ""));
       setChilimbaEnabled(comm.chilimba_enabled ?? false);
+      const fund = Number(comm.fund_summary?.current_fund ?? 0);
+      setCurrentFund(fund);
+      setNewPotAmount(String(fund));
       const m = comm.members?.filter(m => m.pivot?.role === "member") ?? [];
       setMembers(m);
     }).catch(() => {});
+  };
+
+  useEffect(() => {
+    if (!token) { navigate("/login"); return; }
+    axios.get(`${API}/me`, { headers }).then(res => setUser(res.data)).catch(() => { localStorage.clear(); navigate("/login"); });
+    loadCommunity();
     axios.get(`${API}/cycles`, { headers }).then(res => setCycles(res.data)).catch(() => {});
   }, []);
 
@@ -82,20 +92,30 @@ export default function TreasurerCycles() {
     try {
       await axios.post(`${API}/cycles/contribution-amount`, { contribution_amount: contributionAmount }, { headers });
       setSavedAmount(Number(contributionAmount));
-      const res = await axios.get(`${API}/cycles`, { headers });
-      setCycles(res.data);
     } catch (e) {}
     setSaving(false);
   };
 
   const createCycle = async () => {
+    setCreateError("");
+    if (newPotAmount && Number(newPotAmount) > currentFund) {
+      setCreateError(`Pot amount cannot exceed available fund (K${currentFund.toLocaleString()})`);
+      return;
+    }
     setCreating(true);
     try {
-      const res = await axios.post(`${API}/cycles`, { payout_date: newPayoutDate || null, notes: newNotes || null }, { headers });
+      const res = await axios.post(`${API}/cycles`, {
+        pot_amount: newPotAmount ? Number(newPotAmount) : undefined,
+        payout_date: newPayoutDate || null,
+        notes: newNotes || null,
+      }, { headers });
       setCycles(prev => [...prev, res.data]);
       setNewPayoutDate("");
       setNewNotes("");
-    } catch (e) {}
+      loadCommunity(); // refresh fund since it's now committed to a pending cycle
+    } catch (e) {
+      setCreateError(e.response?.data?.message || "Failed to create cycle.");
+    }
     setCreating(false);
   };
 
@@ -113,12 +133,12 @@ export default function TreasurerCycles() {
     try {
       const res = await axios.post(`${API}/cycles/${cycleId}/complete`, {}, { headers });
       setCycles(prev => prev.map(c => c.id === cycleId ? res.data : c));
+      loadCommunity(); // fund drops after payout
     } catch (e) {}
   };
 
   const recipientsWhoHaveReceived = cycles.filter(c => c.status === "completed" && c.recipient_id).map(c => c.recipient_id);
   const eligibleMembers = members.filter(m => !recipientsWhoHaveReceived.includes(m.id));
-  const potAmount = savedAmount * members.length;
 
   return (
     <Layout user={user} onLogout={logout} role="treasurer" activePath="/treasurer/cycles" chilimbaEnabled={chilimbaEnabled}>
@@ -156,9 +176,21 @@ export default function TreasurerCycles() {
       {/* REST ONLY SHOWS IF ENABLED */}
       {chilimbaEnabled && (
         <>
-          {/* CONTRIBUTION AMOUNT */}
+          {/* AVAILABLE FUND */}
+          <div style={{ ...card, marginBottom: 16, display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: "#F0FDF4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Wallet size={18} color="#059669" />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>Available Fund for Payout</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#111827" }}>K{currentFund.toLocaleString()}</div>
+            </div>
+          </div>
+
+          {/* CONTRIBUTION AMOUNT (per-member reference only) */}
           <div style={{ ...card, marginBottom: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#111827", marginBottom: 16 }}>Fixed Contribution Amount</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#111827", marginBottom: 4 }}>Fixed Contribution Amount</div>
+            <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 16 }}>Reference amount each member is expected to contribute per round.</div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>K</div>
               <input type="number" value={contributionAmount} onChange={e => setContributionAmount(e.target.value)}
@@ -168,44 +200,55 @@ export default function TreasurerCycles() {
                 style={{ padding: "9px 20px", background: saving ? "#9CA3AF" : "#1E3A8A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: saving ? "default" : "pointer", fontFamily: "inherit" }}>
                 {saving ? "Saving…" : "Save"}
               </button>
-              {savedAmount > 0 && (
-                <div style={{ fontSize: 13, color: "#6B7280" }}>
-                  Each cycle pot: <span style={{ fontWeight: 700, color: "#111827" }}>K{potAmount.toLocaleString()}</span> ({members.length} members × K{savedAmount.toLocaleString()})
-                </div>
-              )}
             </div>
           </div>
 
           {/* CREATE NEW CYCLE */}
-          {savedAmount > 0 && (
-            <div style={{ ...card, marginBottom: 24 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#111827", marginBottom: 16 }}>Start New Cycle</div>
-              <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
-                <div>
-                  <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6 }}>Cycle End Date (optional)</div>
-                  <input type="date" value={newPayoutDate} onChange={e => setNewPayoutDate(e.target.value)}
-                    style={{ padding: "9px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, fontFamily: "inherit", outline: "none" }} />
-                </div>
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6 }}>Notes (optional)</div>
-                  <input type="text" value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="e.g. July round"
-                    style={{ width: "100%", padding: "9px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
-                </div>
-                <button onClick={createCycle} disabled={creating}
-                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 20px", background: creating ? "#9CA3AF" : "linear-gradient(135deg, #059669, #10B981)", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: creating ? "default" : "pointer", fontFamily: "inherit" }}>
-                  <Plus size={15} />
-                  {creating ? "Creating…" : "Create Cycle"}
-                </button>
-              </div>
+          <div style={{ ...card, marginBottom: 24 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#111827", marginBottom: 4 }}>Start New Cycle</div>
+            <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 16 }}>
+              Pot amount can't exceed your available fund (K{currentFund.toLocaleString()}).
             </div>
-          )}
+            <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6 }}>Cycle Pot Amount</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>K</span>
+                  <input type="number" value={newPotAmount} onChange={e => setNewPotAmount(e.target.value)}
+                    max={currentFund} min={0}
+                    style={{ padding: "9px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 14, fontWeight: 600, width: 140, fontFamily: "inherit", outline: "none" }} />
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6 }}>Cycle End Date (optional)</div>
+                <input type="date" value={newPayoutDate} onChange={e => setNewPayoutDate(e.target.value)}
+                  style={{ padding: "9px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, fontFamily: "inherit", outline: "none" }} />
+              </div>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6 }}>Notes (optional)</div>
+                <input type="text" value={newNotes} onChange={e => setNewNotes(e.target.value)} placeholder="e.g. July round"
+                  style={{ width: "100%", padding: "9px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
+              </div>
+              <button onClick={createCycle} disabled={creating || currentFund <= 0}
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 20px", background: (creating || currentFund <= 0) ? "#9CA3AF" : "linear-gradient(135deg, #059669, #10B981)", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: (creating || currentFund <= 0) ? "default" : "pointer", fontFamily: "inherit" }}>
+                <Plus size={15} />
+                {creating ? "Creating…" : "Create Cycle"}
+              </button>
+            </div>
+            {currentFund <= 0 && (
+              <div style={{ fontSize: 12, color: "#D97706", marginTop: 10 }}>No fund available yet — wait for contributions before starting a cycle.</div>
+            )}
+            {createError && (
+              <div style={{ fontSize: 12, color: "#DC2626", marginTop: 10 }}>{createError}</div>
+            )}
+          </div>
 
           {/* CYCLES LIST */}
           {cycles.length === 0 ? (
             <div style={{ ...card, textAlign: "center", padding: "48px 24px" }}>
               <RefreshCw size={36} color="#D1D5DB" style={{ marginBottom: 12 }} />
               <div style={{ fontSize: 14, fontWeight: 600, color: "#9CA3AF", marginBottom: 6 }}>No cycles yet</div>
-              <div style={{ fontSize: 13, color: "#D1D5DB" }}>Set a contribution amount and create your first cycle above.</div>
+              <div style={{ fontSize: 13, color: "#D1D5DB" }}>Create your first cycle above.</div>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -219,7 +262,7 @@ export default function TreasurerCycles() {
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Cycle {cycle.cycle_number}</div>
                         <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}>
-                          Pot: <span style={{ fontWeight: 600, color: "#374151" }}>K{(Number(cycle.pot_amount) || potAmount).toLocaleString()}</span>
+                          Pot: <span style={{ fontWeight: 600, color: "#374151" }}>K{Number(cycle.pot_amount ?? 0).toLocaleString()}</span>
                           {cycle.payout_date && <> · Ends: {new Date(cycle.payout_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</>}
                           {cycle.notes && <> · {cycle.notes}</>}
                         </div>
