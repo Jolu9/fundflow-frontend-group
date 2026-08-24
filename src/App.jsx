@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import RequireRole from "./components/RequireRole";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -21,37 +22,36 @@ import AdminGroupDetail from "./pages/AdminGroupDetail";
 import Register from "./pages/Register";
 import Setup from "./pages/Setup";
 import TreasurerMemberProfile from "./pages/TreasurerMemberProfile";
-import TreasurerCycles from "./pages/TreasurerCycles";
-import MemberCycles from "./pages/MemberCycles";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/treasurer/members/:id" element={<TreasurerMemberProfile />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/setup" element={<Setup />} />
-        <Route path="/treasurer/contributions" element={<TreasurerContributions />} />
-        <Route path="/member/contributions" element={<MemberContributions />} />
-        <Route path="/member/profile" element={<MemberProfile />} />
-        <Route path="/treasurer/users" element={<TreasurerUsers />} />
-        <Route path="/treasurer/reports" element={<TreasurerReports />} />
-        <Route path="/treasurer/cycles" element={<TreasurerCycles />} />
-        <Route path="/member/cycles" element={<MemberCycles />} />
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/users" element={<AdminUsers />} />
-        <Route path="/admin/loans" element={<AdminLoans />} />
-        <Route path="/member" element={<MemberDashboard />} />
-        <Route path="/member/loans" element={<MemberLoans />} />
-        <Route path="/member/apply" element={<MemberApply />} />
-        <Route path="/admin/groups" element={<AdminGroups />} />
-        <Route path="/admin/groups/:id" element={<AdminGroupDetail />} />
-        <Route path="/member/repayments" element={<MemberRepayments />} />
-        <Route path="/treasurer" element={<TreasurerDashboard />} />
-        <Route path="/treasurer/loans" element={<TreasurerLoans />} />
-        <Route path="/treasurer/repayments" element={<TreasurerRepayments />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/setup" element={<Setup />} />
+
+        <Route path="/admin" element={<RequireRole allow={["admin"]}><AdminDashboard /></RequireRole>} />
+        <Route path="/admin/users" element={<RequireRole allow={["admin"]}><AdminUsers /></RequireRole>} />
+        <Route path="/admin/loans" element={<RequireRole allow={["admin"]}><AdminLoans /></RequireRole>} />
+        <Route path="/admin/groups" element={<RequireRole allow={["admin"]}><AdminGroups /></RequireRole>} />
+        <Route path="/admin/groups/:id" element={<RequireRole allow={["admin"]}><AdminGroupDetail /></RequireRole>} />
+
+        <Route path="/member" element={<RequireRole allow={["member"]}><MemberDashboard /></RequireRole>} />
+        <Route path="/member/loans" element={<RequireRole allow={["member"]}><MemberLoans /></RequireRole>} />
+        <Route path="/member/apply" element={<RequireRole allow={["member"]}><MemberApply /></RequireRole>} />
+        <Route path="/member/repayments" element={<RequireRole allow={["member"]}><MemberRepayments /></RequireRole>} />
+        <Route path="/member/contributions" element={<RequireRole allow={["member"]}><MemberContributions /></RequireRole>} />
+        <Route path="/member/profile" element={<RequireRole allow={["member"]}><MemberProfile /></RequireRole>} />
+
+        <Route path="/treasurer" element={<RequireRole allow={["treasurer"]}><TreasurerDashboard /></RequireRole>} />
+        <Route path="/treasurer/loans" element={<RequireRole allow={["treasurer"]}><TreasurerLoans /></RequireRole>} />
+        <Route path="/treasurer/repayments" element={<RequireRole allow={["treasurer"]}><TreasurerRepayments /></RequireRole>} />
+        <Route path="/treasurer/reports" element={<RequireRole allow={["treasurer"]}><TreasurerReports /></RequireRole>} />
+        <Route path="/treasurer/users" element={<RequireRole allow={["treasurer"]}><TreasurerUsers /></RequireRole>} />
+        <Route path="/treasurer/contributions" element={<RequireRole allow={["treasurer"]}><TreasurerContributions /></RequireRole>} />
+        <Route path="/treasurer/members/:id" element={<RequireRole allow={["treasurer"]}><TreasurerMemberProfile /></RequireRole>} />
       </Routes>
     </BrowserRouter>
   );

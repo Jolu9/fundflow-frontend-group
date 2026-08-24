@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Users, CreditCard, BarChart3, Shield, ClipboardList, ArrowRight, CheckCircle, RefreshCw, TrendingUp, PiggyBank } from "lucide-react";
+import { Users, CreditCard, BarChart3, Shield, ArrowRight, CheckCircle, TrendingUp, PiggyBank, Bell } from "lucide-react";
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -114,8 +114,8 @@ export default function Landing() {
           {[
             [BarChart3, "Loan Management", "Issue loans with interest rates, due dates, and principal amounts. The system tracks every record automatically.", "#2563EB", "#EFF6FF", "#DBEAFE"],
             [CreditCard, "Repayment Tracking", "Record repayments, monitor outstanding balances, and automatically flag overdue accounts.", "#7C3AED", "#F5F3FF", "#EDE9FE"],
-            [PiggyBank, "Contribution Tracking", "Log member savings contributions each cycle and see who has paid and who has not at a glance.", "#059669", "#F0FDF4", "#D1FAE5"],
-            [RefreshCw, "Chilimba Cycles", "Enable rotating savings mode to manage who receives the group pot each cycle, with full rotation history.", "#0891B2", "#ECFEFF", "#A5F3FC"],
+            [PiggyBank, "Contribution Tracking", "Log member savings contributions and see who has paid and who has not at a glance.", "#059669", "#F0FDF4", "#D1FAE5"],
+            [Bell, "Notifications", "Treasurers are alerted to pending loan applications, contribution requests, and repayments awaiting confirmation.", "#0891B2", "#ECFEFF", "#A5F3FC"],
             [Shield, "Role-based Access", "Administrator, Treasurer, and Member roles each have exactly the right level of access and nothing more.", "#DC2626", "#FEF2F2", "#FECACA"],
             [TrendingUp, "Reports and Export", "Generate PDF financial summaries covering all loans and contributions for group record keeping.", "#D97706", "#FFFBEB", "#FDE68A"],
           ].map(([Icon, title, desc, color, bg, border]) => (
@@ -165,7 +165,7 @@ export default function Landing() {
               "Every member can see their own loan and repayment history",
               "The treasurer controls who gets loans and when",
               "Overdue loans are flagged automatically",
-              "Rotating savings cycles with full payout history",
+              "Real-time dashboard for the treasurer and members",
               "Clean PDF reports ready for any group meeting",
               "Accessible from any device with a browser",
             ].map(point => (

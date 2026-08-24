@@ -38,7 +38,7 @@ export default function MemberRepayments() {
 
   const fetchLoans = () => {
     axios.get(`${API}/member/loans`, { headers }).then(res => {
-      setActiveLoans(res.data.filter(l => l.status === "active"));
+      setActiveLoans(res.data.filter(l => l.status === "active" || l.status === "overdue"));
     }).catch(() => {});
   };
 
@@ -103,7 +103,7 @@ export default function MemberRepayments() {
                   const remaining = Number(l.total_due) - Number(l.amount_paid);
                   return (
                     <option key={l.id} value={l.id}>
-                      K{Number(l.amount).toLocaleString()} — K{remaining.toLocaleString()} remaining
+                      K{Number(l.amount).toLocaleString()} — K{remaining.toLocaleString()} remaining{l.status === "overdue" ? " (overdue)" : ""}
                     </option>
                   );
                 })}

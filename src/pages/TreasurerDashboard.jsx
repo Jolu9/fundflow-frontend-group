@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, CheckCircle, XCircle, UserPlus, PiggyBank, Wallet, RefreshCw, User } from "lucide-react";
+import { Bell, CheckCircle, XCircle, UserPlus, PiggyBank, Wallet } from "lucide-react";
 import axios from "axios";
 import Layout from "../components/Layout";
 
@@ -73,20 +73,6 @@ const card = {
   padding: "22px 24px",
 };
 
-const statusBadge = (status) => {
-  const map = {
-    pending: { bg: "#FEF3C7", color: "#92400E", label: "Pending" },
-    active: { bg: "#DBEAFE", color: "#1E40AF", label: "Active" },
-    completed: { bg: "#D1FAE5", color: "#065F46", label: "Completed" },
-  };
-  const s = map[status] ?? map.pending;
-  return (
-    <span style={{ padding: "3px 10px", borderRadius: 99, fontSize: 11, fontWeight: 600, background: s.bg, color: s.color }}>
-      {s.label}
-    </span>
-  );
-};
-
 export default function TreasurerDashboard() {
   const [user, setUser] = useState(null);
   const [community, setCommunity] = useState(null);
@@ -102,8 +88,6 @@ export default function TreasurerDashboard() {
   const [inviteCode, setInviteCode] = useState(null);
   const [showInvite, setShowInvite] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [cycles, setCycles] = useState([]);
-  const [chilimbaEnabled, setChilimbaEnabled] = useState(false);
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
@@ -116,7 +100,6 @@ export default function TreasurerDashboard() {
       if (res.data.length === 0) return;
       const myComm = res.data[0];
       setCommunity(myComm);
-      setChilimbaEnabled(myComm.chilimba_enabled ?? false);
       if (myComm.invite_code) setInviteCode(myComm.invite_code);
       const members = myComm.members?.filter(m => m.pivot?.role === "member") ?? [];
       setCommunityMembers(members);
@@ -140,7 +123,6 @@ export default function TreasurerDashboard() {
 
     axios.get(`${API}/contribution-requests`, { headers }).then(res => setPendingContributions(res.data)).catch(() => {});
     axios.get(`${API}/repayment-requests`, { headers }).then(res => setPendingRepayments(res.data)).catch(() => {});
-    axios.get(`${API}/cycles`, { headers }).then(res => setCycles(res.data)).catch(() => {});
   }, []);
 
   const logout = () => {
@@ -160,7 +142,7 @@ export default function TreasurerDashboard() {
   };
 
   const totalContributedAllTime = contributions.reduce((sum, c) => sum + Number(c.amount), 0);
-  const currentFund = Number(community?.fund_summary?.current_fund ?? 0);
+  const currentFund = Math.max(0, totalContributedAllTime + totalRepaid - totalDisbursed);
 
   const now = new Date();
   const thisMonth = contributions.filter(c => {
@@ -170,9 +152,6 @@ export default function TreasurerDashboard() {
   const totalContributedThisMonth = thisMonth.reduce((sum, c) => sum + Number(c.amount), 0);
   const membersPaidIds = [...new Set(thisMonth.map(c => c.user_id))];
   const topActiveLoans = activeLoans.slice(0, 3);
-
-  const activeCycle = cycles.find(c => c.status === "active") ?? cycles.find(c => c.status === "pending") ?? cycles[cycles.length - 1] ?? null;
-  const completedCount = cycles.filter(c => c.status === "completed").length;
 
   const bellCard = (count, label, names, color, bg, destination) => count > 0 && (
     <div onClick={() => navigate(destination)}
@@ -194,7 +173,7 @@ export default function TreasurerDashboard() {
   );
 
   return (
-    <Layout user={user} onLogout={logout} role="treasurer" activePath="/treasurer" chilimbaEnabled={chilimbaEnabled}>
+    <Layout user={user} onLogout={logout} role="treasurer" activePath="/treasurer">
 
       {/* WELCOME + INVITE BUTTON */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
@@ -234,87 +213,33 @@ export default function TreasurerDashboard() {
       {bellCard(pendingContributions.length, `${pendingContributions.length} contribution request${pendingContributions.length > 1 ? "s" : ""} awaiting confirmation`, pendingContributions.map(r => r.user?.name ?? "Unknown").join(", "), "#059669", "#F0FDF4", "/treasurer/contributions")}
       {bellCard(pendingRepayments.length, `${pendingRepayments.length} repayment${pendingRepayments.length > 1 ? "s" : ""} awaiting confirmation`, pendingRepayments.map(r => r.user?.name ?? "Unknown").join(", "), "#2563EB", "#EFF6FF", "/treasurer/repayments")}
 
-      {/* GROUP FUND + CURRENT CYCLE */}
-      <div style={{ display: "grid", gridTemplateColumns: chilimbaEnabled ? "1fr 1fr" : "1fr", gap: 16, marginBottom: 16 }}>
-
-        {/* GROUP FUND */}
-        <div style={{ ...card }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
-            <Wallet size={15} color="#9CA3AF" />
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em" }}>Group Fund</div>
+      {/* GROUP FUND */}
+      <div style={{ ...card, marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+          <Wallet size={15} color="#9CA3AF" />
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em" }}>Group Fund</div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+          <div>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6 }}>Current Fund</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: "#111827", letterSpacing: "-0.5px" }}>K{currentFund.toLocaleString()}</div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <div>
-              <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6 }}>Current Fund</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: "#111827", letterSpacing: "-0.5px" }}>K{currentFund.toLocaleString()}</div>
-            </div>
-            <div style={{ borderLeft: "1px solid #F3F4F6", paddingLeft: 16 }}>
-              <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6 }}>Total Contributed</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#374151" }}>K{totalContributedAllTime.toLocaleString()}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6 }}>Total Disbursed</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#374151" }}>K{totalDisbursed.toLocaleString()}</div>
-            </div>
-            <div style={{ borderLeft: "1px solid #F3F4F6", paddingLeft: 16 }}>
-              <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6 }}>Total Repaid</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#374151" }}>K{totalRepaid.toLocaleString()}</div>
-            </div>
+          <div style={{ borderLeft: "1px solid #F3F4F6", paddingLeft: 16 }}>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6 }}>Total Contributed</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#374151" }}>K{totalContributedAllTime.toLocaleString()}</div>
+          </div>
+          <div style={{ borderLeft: "1px solid #F3F4F6", paddingLeft: 16 }}>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6 }}>Total Disbursed</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#374151" }}>K{totalDisbursed.toLocaleString()}</div>
+          </div>
+          <div style={{ borderLeft: "1px solid #F3F4F6", paddingLeft: 16 }}>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6 }}>Total Repaid</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#374151" }}>K{totalRepaid.toLocaleString()}</div>
           </div>
         </div>
-
-        {/* CURRENT CYCLE — only when chilimba enabled */}
-        {chilimbaEnabled && (
-          <div style={{ ...card, cursor: "pointer" }} onClick={() => navigate("/treasurer/cycles")}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <RefreshCw size={15} color="#9CA3AF" />
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em" }}>Chilimba Cycle</div>
-              </div>
-              <span style={{ fontSize: 11, fontWeight: 600, color: "#2563EB" }}>Manage →</span>
-            </div>
-
-            {cycles.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "16px 0" }}>
-                <RefreshCw size={28} color="#D1D5DB" style={{ marginBottom: 8 }} />
-                <div style={{ fontSize: 13, color: "#9CA3AF" }}>No cycles started yet.</div>
-                <div style={{ fontSize: 12, color: "#D1D5DB", marginTop: 4 }}>Go to Cycles to set up your first round.</div>
-              </div>
-            ) : (
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: "#111827" }}>Cycle {activeCycle?.cycle_number}</div>
-                  {activeCycle && statusBadge(activeCycle.status)}
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 4 }}>Pot Amount</div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>K{Number(activeCycle?.pot_amount ?? 0).toLocaleString()}</div>
-                  </div>
-                  <div style={{ borderLeft: "1px solid #F3F4F6", paddingLeft: 16 }}>
-                    <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 4 }}>Recipient</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: activeCycle?.recipient ? "#111827" : "#9CA3AF", display: "flex", alignItems: "center", gap: 5 }}>
-                      {activeCycle?.recipient ? <><User size={13} color="#059669" /> {activeCycle.recipient.name}</> : "Not assigned"}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 4 }}>Completed Rounds</div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: "#059669" }}>{completedCount} / {cycles.length}</div>
-                  </div>
-                  <div style={{ borderLeft: "1px solid #F3F4F6", paddingLeft: 16 }}>
-                    <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 4 }}>Cycle End Date</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
-                      {activeCycle?.payout_date ? new Date(activeCycle.payout_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
-      {/* BAR CHART - full width */}
+      {/* BAR CHART */}
       <div style={{ ...card, marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>Contributions, {now.getFullYear()}</div>
@@ -407,7 +332,6 @@ export default function TreasurerDashboard() {
           )}
         </div>
       </div>
-
     </Layout>
   );
 }

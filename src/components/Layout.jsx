@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, CreditCard, ClipboardList, BarChart3, FileText, UserCircle, LogOut, PiggyBank, Globe, RefreshCw } from "lucide-react";
+import { LayoutDashboard, Users, CreditCard, ClipboardList, BarChart3, FileText, UserCircle, LogOut, PiggyBank, Globe, User } from "lucide-react";
 
 const adminNav = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/admin" },
@@ -7,29 +7,34 @@ const adminNav = [
   { label: "Users", icon: Users, path: "/admin/users" },
 ];
 
-const getMemberNav = (chilimbaEnabled) => [
+const memberNav = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/member" },
   { label: "My Loans", icon: CreditCard, path: "/member/loans" },
   { label: "Apply for Loan", icon: FileText, path: "/member/apply" },
   { label: "Repayments", icon: ClipboardList, path: "/member/repayments" },
   { label: "Contributions", icon: PiggyBank, path: "/member/contributions" },
-  ...(chilimbaEnabled ? [{ label: "Cycles", icon: RefreshCw, path: "/member/cycles" }] : []),
   { label: "Profile", icon: UserCircle, path: "/member/profile" },
 ];
 
-const getTreasurerNav = (chilimbaEnabled) => [
+const treasurerNav = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/treasurer" },
   { label: "Members", icon: Users, path: "/treasurer/users" },
   { label: "Loans", icon: CreditCard, path: "/treasurer/loans" },
   { label: "Repayments", icon: ClipboardList, path: "/treasurer/repayments" },
   { label: "Contributions", icon: PiggyBank, path: "/treasurer/contributions" },
-  { label: "Cycles", icon: RefreshCw, path: "/treasurer/cycles", disabled: !chilimbaEnabled },
   { label: "Reports", icon: BarChart3, path: "/treasurer/reports" },
 ];
 
-export default function Layout({ children, user, onLogout, role = "admin", activePath, chilimbaEnabled = false, memberChilimbaEnabled = false }) {
+const roleColor = {
+  admin: "#7C3AED",
+  treasurer: "#2563EB",
+  member: "#059669",
+};
+
+export default function Layout({ children, user, onLogout, role = "admin", activePath }) {
   const navigate = useNavigate();
-  const nav = role === "member" ? getMemberNav(memberChilimbaEnabled) : role === "treasurer" ? getTreasurerNav(chilimbaEnabled) : adminNav;
+  const nav = role === "member" ? memberNav : role === "treasurer" ? treasurerNav : adminNav;
+  const roleTextColor = roleColor[role] ?? "#9CA3AF";
 
   return (
     <>
@@ -63,7 +68,6 @@ export default function Layout({ children, user, onLogout, role = "admin", activ
             {nav.map(item => {
               const Icon = item.icon;
               const isActive = activePath === item.path;
-              const isDisabled = item.disabled ?? false;
               return (
                 <div key={item.label} onClick={() => navigate(item.path)}
                   style={{
@@ -76,17 +80,14 @@ export default function Layout({ children, user, onLogout, role = "admin", activ
                     borderRadius: 7,
                     fontSize: 13,
                     fontWeight: isActive ? 600 : 400,
-                    color: isActive ? "#fff" : isDisabled ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.55)",
+                    color: isActive ? "#fff" : "rgba(255,255,255,0.55)",
                     background: isActive ? "rgba(255,255,255,0.12)" : "transparent",
                     transition: "all 0.12s"
                   }}
                   onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
                   onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent"; }}>
-                  <Icon size={16} strokeWidth={isActive ? 2.2 : 1.8} color={isActive ? "#fff" : isDisabled ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.45)"} />
+                  <Icon size={16} strokeWidth={isActive ? 2.2 : 1.8} color={isActive ? "#fff" : "rgba(255,255,255,0.45)"} />
                   {item.label}
-                  {isDisabled && (
-                    <span style={{ marginLeft: "auto", fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Off</span>
-                  )}
                 </div>
               );
             })}
@@ -104,13 +105,23 @@ export default function Layout({ children, user, onLogout, role = "admin", activ
         </div>
 
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-          <div style={{ background: "#fff", borderBottom: "1px solid #E5E7EB", padding: "0 28px", height: 56, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 14, position: "sticky", top: 0, zIndex: 100 }}>
+          <div style={{ background: "#fff", borderBottom: "1px solid #F3F4F6", padding: "0 28px", height: 64, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 16, position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>{user?.name}</div>
-              <div style={{ fontSize: 11, color: "#9CA3AF", textTransform: "capitalize" }}>{user?.role}</div>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: "#111827", lineHeight: 1.3 }}>{user?.name}</div>
+              <div style={{ fontSize: 10.5, color: roleTextColor, textTransform: "capitalize", marginTop: 2, fontWeight: 500 }}>{user?.role}</div>
             </div>
-            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#1E3A8A", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff" }}>
-              {user?.name?.[0]?.toUpperCase() ?? "?"}
+            <div style={{ width: 1, height: 28, background: "#E5E7EB" }} />
+            <div style={{
+              width: 38,
+              height: 38,
+              borderRadius: "50%",
+              background: "#EEF0F3",
+              border: "1px solid #E2E4E8",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}>
+              <User size={20} color="#9CA3AF" strokeWidth={1.8} />
             </div>
           </div>
 

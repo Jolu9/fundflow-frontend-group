@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { TrendingUp, Clock, Check, X } from "lucide-react";
+import { Clock, Check, X } from "lucide-react";
 import axios from "axios";
 import Layout from "../components/Layout";
 
@@ -106,10 +106,6 @@ export default function TreasurerRepayments() {
     axios.post(`${API}/logout`, {}, { headers }).finally(() => { localStorage.clear(); navigate("/login"); });
   };
 
-  const totalDueAll = communityLoans.reduce((sum, l) => sum + Number(l.total_due), 0);
-  const totalPaidAll = communityLoans.reduce((sum, l) => sum + Number(l.amount_paid), 0);
-  const collectionRate = totalDueAll > 0 ? (totalPaidAll / totalDueAll) * 100 : 0;
-
   return (
     <Layout user={user} onLogout={logout} role="treasurer" activePath="/treasurer/repayments">
 
@@ -118,17 +114,6 @@ export default function TreasurerRepayments() {
         <p style={{ fontSize: 13, color: "#9CA3AF" }}>
           Log a member's loan repayment{community ? ` for ${community.name}` : ""}.
         </p>
-      </div>
-
-      {/* STATS */}
-      <div style={{ background: "#fff", borderRadius: 10, border: "1px solid #E5E7EB", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", padding: "18px 20px", marginBottom: 20, maxWidth: 280 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: "#ECFDF5", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <TrendingUp size={16} color="#059669" />
-          </div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.04em" }}>Collection Rate</div>
-        </div>
-        <div style={{ fontSize: 22, fontWeight: 700, color: "#111827" }}>{collectionRate.toFixed(0)}%</div>
       </div>
 
       {/* PENDING REQUESTS */}

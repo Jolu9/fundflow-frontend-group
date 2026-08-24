@@ -54,8 +54,17 @@ export default function TreasurerLoans() {
     axios.post(`${API}/logout`, {}, { headers }).finally(() => { localStorage.clear(); navigate("/login"); });
   };
 
+  // Members who already have a pending, active, or overdue loan
+  const membersWithOutstandingLoan = new Set(
+    loans.filter(l => ["pending", "active", "overdue"].includes(l.status)).map(l => l.user_id)
+  );
+
   const handleSubmit = async () => {
     if (!form.user_id || !form.amount || !form.interest_rate || !form.due_date) { setError("All fields except purpose are required."); return; }
+    if (membersWithOutstandingLoan.has(Number(form.user_id))) {
+      setError("This member already has an outstanding loan and cannot be issued another until it is fully repaid.");
+      return;
+    }
     setLoading(true); setError("");
     try {
       await axios.post(`${API}/loans`, form, { headers });
@@ -232,8 +241,17 @@ export default function TreasurerLoans() {
               <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Member</label>
               <select value={form.user_id} onChange={e => setForm({ ...form, user_id: e.target.value })} style={{ ...inputStyle }}>
                 <option value="">Select member</option>
-                {members.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                {members.map(u => (
+                  <option key={u.id} value={u.id} disabled={membersWithOutstandingLoan.has(u.id)}>
+                    {u.name}{membersWithOutstandingLoan.has(u.id) ? " (has outstanding loan)" : ""}
+                  </option>
+                ))}
               </select>
+              {form.user_id && membersWithOutstandingLoan.has(Number(form.user_id)) && (
+                <div style={{ fontSize: 11, color: "#DC2626", marginTop: 6 }}>
+                  This member already has an outstanding loan.
+                </div>
+              )}
             </div>
             {[["Amount (K)", "amount", "number"], ["Interest Rate (%)", "interest_rate", "number"], ["Due Date", "due_date", "date"], ["Purpose", "purpose", "text"]].map(([label, key, type]) => (
               <div key={key}>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CreditCard, AlertTriangle, CheckCircle, Wallet, Landmark, PiggyBank, ShieldCheck, RefreshCw } from "lucide-react";
+import { CreditCard, AlertTriangle, CheckCircle, Wallet, Landmark, PiggyBank, ShieldCheck } from "lucide-react";
 import axios from "axios";
 import Layout from "../components/Layout";
 
@@ -21,8 +21,6 @@ export default function MemberDashboard() {
   const [loans, setLoans] = useState([]);
   const [contributions, setContributions] = useState([]);
   const [checkingCommunity, setCheckingCommunity] = useState(true);
-  const [chilimbaEnabled, setChilimbaEnabled] = useState(false);
-  const [currentCycle, setCurrentCycle] = useState(null);
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
@@ -39,15 +37,6 @@ export default function MemberDashboard() {
         const t = comm.members?.find(m => m.pivot?.role === "treasurer");
         if (t) setTreasurer(t);
         if (comm.fund_summary) setFundSummary(comm.fund_summary);
-        const enabled = comm.chilimba_enabled ?? false;
-        setChilimbaEnabled(enabled);
-        if (enabled) {
-          axios.get(`${API}/member/cycles`, { headers }).then(res => {
-            const cycles = res.data;
-            const active = cycles.find(c => c.status === "active") ?? cycles.find(c => c.status === "pending") ?? null;
-            setCurrentCycle(active);
-          }).catch(() => {});
-        }
         setCheckingCommunity(false);
       } else {
         navigate("/setup");
@@ -76,10 +65,8 @@ export default function MemberDashboard() {
     { label: "Balance Remaining", value: `K${activeBalance.toLocaleString()}`, icon: Wallet, color: "#7C3AED" },
   ];
 
-  const isCurrentRecipient = currentCycle?.recipient_id === user?.id;
-
   return (
-    <Layout user={user} onLogout={logout} role="member" activePath="/member" memberChilimbaEnabled={chilimbaEnabled}>
+    <Layout user={user} onLogout={logout} role="member" activePath="/member">
 
       {/* WELCOME + TREASURER */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
@@ -128,31 +115,6 @@ export default function MemberDashboard() {
             <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>Total Disbursed</div>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#374151" }}>K{Number(fundSummary.total_disbursed).toLocaleString()}</div>
           </div>
-        </div>
-      )}
-
-      {/* CHILIMBA CYCLE CARD */}
-      {chilimbaEnabled && currentCycle && (
-        <div onClick={() => navigate("/member/cycles")}
-          style={{ ...card, padding: "16px 20px", marginBottom: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", background: isCurrentRecipient ? "linear-gradient(135deg, #F0FDF4, #DCFCE7)" : "#fff", border: isCurrentRecipient ? "1.5px solid #86EFAC" : "1px solid #E8EAED" }}
-          onMouseEnter={e => e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.10)"}
-          onMouseLeave={e => e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.06)"}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: isCurrentRecipient ? "#DCFCE7" : "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <RefreshCw size={17} color={isCurrentRecipient ? "#059669" : "#2563EB"} />
-            </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>
-                Chilimba — Cycle {currentCycle.cycle_number}
-                {isCurrentRecipient && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: "#059669", background: "#D1FAE5", padding: "2px 8px", borderRadius: 99 }}>You're receiving!</span>}
-              </div>
-              <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}>
-                Pot: K{Number(currentCycle.pot_amount ?? 0).toLocaleString()}
-                {currentCycle.recipient && <> · {isCurrentRecipient ? "Assigned to you" : `Recipient: ${currentCycle.recipient.name}`}</>}
-              </div>
-            </div>
-          </div>
-          <span style={{ fontSize: 12, fontWeight: 600, color: isCurrentRecipient ? "#059669" : "#2563EB" }}>View →</span>
         </div>
       )}
 
