@@ -14,6 +14,7 @@ export default function TreasurerLoans() {
   const [showForm, setShowForm] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState(null);
   const [reviewForm, setReviewForm] = useState({ interest_rate: "", due_date: "" });
+  const [rejectReason, setRejectReason] = useState("");
   const [form, setForm] = useState({ user_id: "", amount: "", interest_rate: "10", due_date: "", purpose: "" });
   const [error, setError] = useState("");
   const [reviewError, setReviewError] = useState("");
@@ -46,15 +47,14 @@ export default function TreasurerLoans() {
 
   useEffect(() => {
     if (!token) { navigate("/login"); return; }
-    axios.get(`${API}/me`, { headers }).then(res => setUser(res.data)).catch(() => { localStorage.clear(); navigate("/login"); });
+    axios.get(`${API}/me`, { headers }).then(res => setUser(res.data)).catch(() => { localStorage.removeItem("token"); navigate("/login"); });
     fetchData();
   }, []);
 
   const logout = () => {
-    axios.post(`${API}/logout`, {}, { headers }).finally(() => { localStorage.clear(); navigate("/login"); });
-  };
+  axios.post(`${API}/logout`, {}, { headers }).finally(() => { localStorage.removeItem("token"); navigate("/login"); });
+};
 
-  // Members who already have a pending, active, or overdue loan
   const membersWithOutstandingLoan = new Set(
     loans.filter(l => ["pending", "active", "overdue"].includes(l.status)).map(l => l.user_id)
   );
@@ -87,12 +87,13 @@ export default function TreasurerLoans() {
       setSelectedLoan(null);
       setReviewForm({ interest_rate: "", due_date: "" });
       fetchData();
-    } catch { setReviewError("Failed to approve loan."); }
+    } catch (e) { setReviewError(e.response?.data?.message || "Failed to approve loan."); }
   };
 
   const handleReject = async () => {
-    await axios.patch(`${API}/loans/${selectedLoan.id}`, { status: "rejected" }, { headers });
+    await axios.patch(`${API}/loans/${selectedLoan.id}`, { status: "rejected", rejection_reason: rejectReason }, { headers });
     setSelectedLoan(null);
+    setRejectReason("");
     fetchData();
   };
 
@@ -136,7 +137,7 @@ export default function TreasurerLoans() {
               <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>
                 {selectedLoan.status === "pending" ? "Review Loan Application" : "Loan Details"}
               </h3>
-              <button onClick={() => { setSelectedLoan(null); setReviewError(""); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF" }}><X size={18} /></button>
+              <button onClick={() => { setSelectedLoan(null); setReviewError(""); setRejectReason(""); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF" }}><X size={18} /></button>
             </div>
 
             <div style={{ background: "#F9FAFB", borderRadius: 8, padding: 16, marginBottom: 24, border: "1px solid #E5E7EB" }}>
@@ -181,6 +182,11 @@ export default function TreasurerLoans() {
                     Total due: <strong>K{(Number(selectedLoan.amount) + (Number(selectedLoan.amount) * Number(reviewForm.interest_rate) / 100)).toLocaleString()}</strong>
                   </div>
                 )}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Rejection reason (optional)</label>
+                  <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={2}
+                    style={{ ...inputStyle, resize: "vertical" }} placeholder="e.g. Amount too high for current standing" />
+                </div>
                 <div style={{ display: "flex", gap: 10 }}>
                   <button onClick={handleApprove} style={{ flex: 1, padding: "10px", background: "#1E3A8A", color: "#fff", border: "none", borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Approve</button>
                   <button onClick={handleReject} style={{ flex: 1, padding: "10px", background: "#FEF2F2", color: "#DC2626", border: "1px solid #FECACA", borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Reject</button>
@@ -328,7 +334,7 @@ export default function TreasurerLoans() {
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr style={{ background: "#F9FAFB" }}>
-                          {["Amount", "Interest", "Total Due", "Paid", "Remaining", "Due Date", "Purpose", "Status", "Actions"].map(h => (
+                          {["Amount", "Interest", "Penalty", "Total Due", "Paid", "Remaining", "Due Date", "Purpose", "Status", "Actions"].map(h => (
                             <th key={h} style={{ padding: "9px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#9CA3AF", borderBottom: "1px solid #F3F4F6" }}>{h}</th>
                           ))}
                         </tr>
@@ -339,16 +345,21 @@ export default function TreasurerLoans() {
                             onMouseEnter={e => e.currentTarget.style.background = "#FAFAFA"}
                             onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                             <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 500, color: "#111827" }}>K{Number(loan.amount).toLocaleString()}</td>
-                            <td style={{ padding: "12px 16px", fontSize: 13, color: "#6B7280" }}>{loan.interest_rate}%</td>
+                                                        <td style={{ padding: "12px 16px", fontSize: 13, color: "#6B7280" }}>{loan.interest_rate}%</td>
+                            <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: Number(loan.penalty_amount) > 0 ? 600 : 400, color: Number(loan.penalty_amount) > 0 ? "#DC2626" : "#9CA3AF" }}>
+                              {Number(loan.penalty_amount) > 0 ? `K${Number(loan.penalty_amount).toLocaleString()}` : "—"}
+                            </td>
                             <td style={{ padding: "12px 16px", fontSize: 13, color: "#6B7280" }}>K{Number(loan.total_due).toLocaleString()}</td>
                             <td style={{ padding: "12px 16px", fontSize: 13, color: "#6B7280" }}>K{Number(loan.amount_paid).toLocaleString()}</td>
-                            <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: "#DC2626" }}>K{(Number(loan.total_due) - Number(loan.amount_paid)).toLocaleString()}</td>
+                            <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: loan.status === "rejected" ? "#9CA3AF" : "#DC2626" }}>
+  {loan.status === "rejected" ? "—" : `K${(Number(loan.total_due) - Number(loan.amount_paid)).toLocaleString()}`}
+</td>
                             <td style={{ padding: "12px 16px", fontSize: 13, color: "#6B7280" }}>{loan.due_date || "—"}</td>
                             <td style={{ padding: "12px 16px", fontSize: 13, color: "#6B7280", maxWidth: 140 }}>{loan.purpose || "—"}</td>
                             <td style={{ padding: "12px 16px" }}>{statusBadge(loan.status)}</td>
                             <td style={{ padding: "12px 16px", display: "flex", gap: 6 }}>
                               {loan.status === "pending" && (
-                                <button onClick={() => { setSelectedLoan(loan); setReviewForm({ interest_rate: "", due_date: "" }); setReviewError(""); }}
+                                <button onClick={() => { setSelectedLoan(loan); setReviewForm({ interest_rate: "", due_date: "" }); setReviewError(""); setRejectReason(""); }}
                                   style={{ padding: "4px 12px", background: "#EFF6FF", color: "#2563EB", border: "none", borderRadius: 5, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
                                   Review
                                 </button>

@@ -28,7 +28,7 @@ export default function MemberContributions() {
 
   useEffect(() => {
     if (!token) { navigate("/login"); return; }
-    axios.get(`${API}/me`, { headers }).then(res => setUser(res.data)).catch(() => { localStorage.clear(); navigate("/login"); });
+    axios.get(`${API}/me`, { headers }).then(res => setUser(res.data)).catch(() => { localStorage.removeItem("token"); navigate("/login"); });
     axios.get(`${API}/member/contributions`, { headers }).then(res => setContributions(res.data)).catch(() => {});
     axios.get(`${API}/communities/my`, { headers }).then(res => {
       if (res.data.length > 0) {
@@ -39,8 +39,8 @@ export default function MemberContributions() {
   }, []);
 
   const logout = () => {
-    axios.post(`${API}/logout`, {}, { headers }).finally(() => { localStorage.clear(); navigate("/login"); });
-  };
+  axios.post(`${API}/logout`, {}, { headers }).finally(() => { localStorage.removeItem("token"); navigate("/login"); });
+};
 
   const handleSubmit = async () => {
     if (!form.amount) { setError("Amount is required."); return; }

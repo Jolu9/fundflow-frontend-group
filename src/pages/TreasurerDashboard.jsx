@@ -94,7 +94,7 @@ export default function TreasurerDashboard() {
 
   useEffect(() => {
     if (!token) { navigate("/login"); return; }
-    axios.get(`${API}/me`, { headers }).then(res => setUser(res.data)).catch(() => { localStorage.clear(); navigate("/login"); });
+    axios.get(`${API}/me`, { headers }).then(res => setUser(res.data)).catch(() => { localStorage.removeItem("token"); navigate("/login"); });
 
     axios.get(`${API}/communities/my`, { headers }).then(res => {
       if (res.data.length === 0) return;
@@ -126,8 +126,8 @@ export default function TreasurerDashboard() {
   }, []);
 
   const logout = () => {
-    axios.post(`${API}/logout`, {}, { headers }).finally(() => { localStorage.clear(); navigate("/login"); });
-  };
+  axios.post(`${API}/logout`, {}, { headers }).finally(() => { localStorage.removeItem("token"); navigate("/login"); });
+};
 
   const generateInvite = async () => {
     const res = await axios.post(`${API}/communities/${community.id}/generate-invite`, {}, { headers });

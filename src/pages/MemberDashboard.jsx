@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CreditCard, AlertTriangle, CheckCircle, Wallet, Landmark, PiggyBank, ShieldCheck } from "lucide-react";
+import { CreditCard, AlertTriangle, CheckCircle, Wallet, Landmark, PiggyBank, ShieldCheck, Bell } from "lucide-react";
 import axios from "axios";
 import Layout from "../components/Layout";
 
@@ -20,16 +20,22 @@ export default function MemberDashboard() {
   const [fundSummary, setFundSummary] = useState(null);
   const [loans, setLoans] = useState([]);
   const [contributions, setContributions] = useState([]);
+  const [contributionRequests, setContributionRequests] = useState([]);
+  const [repaymentRequests, setRepaymentRequests] = useState([]);
   const [checkingCommunity, setCheckingCommunity] = useState(true);
+  const [notifications, setNotifications] = useState([]);
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {
     if (!token) { navigate("/login"); return; }
-    axios.get(`${API}/me`, { headers }).then(res => setUser(res.data)).catch(() => { localStorage.clear(); navigate("/login"); });
+    axios.get(`${API}/me`, { headers }).then(res => setUser(res.data)).catch(() => { localStorage.removeItem("token"); navigate("/login"); });
     axios.get(`${API}/member/loans`, { headers }).then(res => setLoans(res.data)).catch(() => {});
     axios.get(`${API}/member/contributions`, { headers }).then(res => setContributions(res.data)).catch(() => {});
+    axios.get(`${API}/contribution-requests/mine`, { headers }).then(res => setContributionRequests(res.data)).catch(() => {});
+    axios.get(`${API}/repayment-requests/mine`, { headers }).then(res => setRepaymentRequests(res.data)).catch(() => {});
+    axios.get(`${API}/notifications`, { headers }).then(res => setNotifications(res.data)).catch(() => {});
     axios.get(`${API}/communities/my`, { headers }).then(res => {
       if (res.data.length > 0) {
         const comm = res.data[0];
@@ -45,7 +51,7 @@ export default function MemberDashboard() {
   }, []);
 
   const logout = () => {
-    axios.post(`${API}/logout`, {}, { headers }).finally(() => { localStorage.clear(); navigate("/login"); });
+    axios.post(`${API}/logout`, {}, { headers }).finally(() => { localStorage.removeItem("token"); navigate("/login"); });
   };
 
   if (checkingCommunity) return null;
@@ -57,6 +63,16 @@ export default function MemberDashboard() {
   const totalPaid = loans.reduce((sum, l) => sum + Number(l.amount_paid), 0);
   const totalContributed = contributions.reduce((sum, c) => sum + Number(c.amount), 0);
   const recentContributions = [...contributions].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 4);
+
+  const dismissNotif = (id) => {
+    axios.post(`${API}/notifications/${id}/dismiss`, {}, { headers }).catch(() => {});
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const goToNotif = (item) => {
+    dismissNotif(item.id);
+    navigate(item.route);
+  };
 
   const cards = [
     { label: "Active Loans", value: activeLoans.length, icon: CreditCard, color: "#2563EB" },
@@ -95,6 +111,36 @@ export default function MemberDashboard() {
           </div>
         )}
       </div>
+
+      {/* NOTIFICATIONS */}
+      {notifications.map(item => {
+        const isPositive = item.status === "active" || item.status === "confirmed";
+        return (
+          <div key={item.id} onClick={() => goToNotif(item)}
+            style={{ background: "#fff", border: "1px solid #E8EAED", borderRadius: 14, padding: "16px 20px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14, cursor: "pointer", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", transition: "box-shadow 0.15s" }}
+            onMouseEnter={e => e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.10)"}
+            onMouseLeave={e => e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.06)"}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 10,
+              background: isPositive ? "#F0FDF4" : "#FEF2F2",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, position: "relative"
+            }}>
+              <Bell size={18} color={isPositive ? "#059669" : "#DC2626"} />
+              <div style={{ position: "absolute", top: -4, right: -4, width: 18, height: 18, background: "#EF4444", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff", border: "2px solid #fff" }}>
+                1
+              </div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#111827", marginBottom: 2 }}>{item.title}</div>
+              <div style={{ fontSize: 12, color: "#9CA3AF" }}>{item.subtitle}</div>
+            </div>
+            <span onClick={(e) => { e.stopPropagation(); dismissNotif(item.id); }}
+              style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", padding: 6, cursor: "pointer" }}>
+              ✕
+            </span>
+          </div>
+        );
+      })}
 
       {/* GROUP FUND */}
       {fundSummary && (
@@ -226,10 +272,15 @@ export default function MemberDashboard() {
                         <div style={{ width: `${progress}%`, background: isOverdue ? "#DC2626" : "#2563EB", height: 7, borderRadius: 99, transition: "width 0.4s" }} />
                       </div>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6B7280" }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6B7280" }}>
                       <span>Paid: <span style={{ fontWeight: 600, color: "#059669" }}>K{Number(loan.amount_paid).toLocaleString()}</span></span>
                       <span>Remaining: <span style={{ fontWeight: 600, color: isOverdue ? "#DC2626" : "#374151" }}>K{remaining.toLocaleString()}</span></span>
                     </div>
+                    {Number(loan.penalty_amount) > 0 && (
+                      <div style={{ marginTop: 6, fontSize: 11, color: "#DC2626", fontWeight: 600 }}>
+                        ⚠ 5% overdue penalty applied: K{Number(loan.penalty_amount).toLocaleString()}
+                      </div>
+                    )}
                   </div>
                 );
               })}

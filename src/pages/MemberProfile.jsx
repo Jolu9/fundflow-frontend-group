@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Mail, Phone, CreditCard, Shield } from "lucide-react";
+import { User, Mail, Phone, Shield } from "lucide-react";
 import axios from "axios";
 import Layout from "../components/Layout";
 
@@ -32,7 +32,6 @@ export default function MemberProfile() {
     { label: "Full Name", value: user?.name, icon: User },
     { label: "Email Address", value: user?.email, icon: Mail },
     { label: "Phone Number", value: user?.phone || "—", icon: Phone },
-    { label: "National ID", value: user?.national_id || "—", icon: CreditCard },
     { label: "Role", value: user?.role, icon: Shield },
   ];
 

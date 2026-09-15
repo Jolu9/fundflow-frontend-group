@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, XCircle } from "lucide-react";
 import axios from "axios";
 import Layout from "../components/Layout";
 
@@ -57,6 +57,15 @@ export default function TreasurerContributions() {
     }
   };
 
+  const handleReject = async (id) => {
+    try {
+      await axios.post(`${API}/contribution-requests/${id}/reject`, {}, { headers });
+      fetchAll();
+    } catch (e) {
+      alert("Failed to reject.");
+    }
+  };
+
   const handleSubmit = async () => {
     if (!form.user_id || !form.amount || !form.contribution_date) { setError("Member, amount, and date are required."); return; }
     setLoading(true); setError(""); setSuccess("");
@@ -105,6 +114,10 @@ export default function TreasurerContributions() {
                 <button onClick={() => handleConfirm(req.id)}
                   style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", background: "#ECFDF5", color: "#059669", border: "1px solid #BBF7D0", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
                   <CheckCircle size={13} /> Confirm
+                </button>
+                <button onClick={() => handleReject(req.id)}
+                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", background: "#FEF2F2", color: "#DC2626", border: "1px solid #FECACA", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                  <XCircle size={13} /> Reject
                 </button>
               </div>
             ))}

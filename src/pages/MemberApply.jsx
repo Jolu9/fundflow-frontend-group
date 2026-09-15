@@ -68,11 +68,15 @@ export default function MemberApply() {
               <div style={{ width: 10, height: 10, borderRadius: "50%", background: statusColor[existingLoan.status] ?? "#9CA3AF", flexShrink: 0 }} />
               <div style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>You have an outstanding loan</div>
             </div>
-            <p style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.7, marginBottom: 20 }}>
-              You cannot apply for a new loan until your current loan is fully repaid. Your loan of{" "}
-              <span style={{ fontWeight: 600, color: "#111827" }}>K{Number(existingLoan.amount).toLocaleString()}</span> is currently{" "}
-              <span style={{ fontWeight: 600, color: statusColor[existingLoan.status] }}>{statusLabel[existingLoan.status]}</span>.
-            </p>
+           <p style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.7, marginBottom: 20 }}>
+  {existingLoan.status === "pending"
+    ? <>You already have a loan application awaiting treasurer review. Your requested amount of{" "}
+        <span style={{ fontWeight: 600, color: "#111827" }}>K{Number(existingLoan.amount).toLocaleString()}</span> is currently{" "}
+        <span style={{ fontWeight: 600, color: statusColor[existingLoan.status] }}>{statusLabel[existingLoan.status]}</span>.</>
+    : <>You cannot apply for a new loan until your current loan is fully repaid. Your loan of{" "}
+        <span style={{ fontWeight: 600, color: "#111827" }}>K{Number(existingLoan.amount).toLocaleString()}</span> is currently{" "}
+        <span style={{ fontWeight: 600, color: statusColor[existingLoan.status] }}>{statusLabel[existingLoan.status]}</span>.</>}
+</p>
             <div style={{ background: "#F9FAFB", borderRadius: 8, padding: "12px 16px", fontSize: 13, color: "#374151", marginBottom: 20 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                 <span style={{ color: "#9CA3AF" }}>Amount</span>

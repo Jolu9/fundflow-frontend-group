@@ -70,10 +70,17 @@ export default function MemberLoans() {
                 <td style={{ padding: "13px 16px", fontSize: 13, color: "#6B7280" }}>{loan.interest_rate}%</td>
                 <td style={{ padding: "13px 16px", fontSize: 13, color: "#6B7280" }}>K{Number(loan.total_due).toLocaleString()}</td>
                 <td style={{ padding: "13px 16px", fontSize: 13, color: "#6B7280" }}>K{Number(loan.amount_paid).toLocaleString()}</td>
-                <td style={{ padding: "13px 16px", fontSize: 13, fontWeight: 600, color: "#DC2626" }}>K{(Number(loan.total_due) - Number(loan.amount_paid)).toLocaleString()}</td>
+                <td style={{ padding: "13px 16px", fontSize: 13, fontWeight: 600, color: loan.status === "rejected" ? "#9CA3AF" : "#DC2626" }}>
+  {loan.status === "rejected" ? "—" : `K${(Number(loan.total_due) - Number(loan.amount_paid)).toLocaleString()}`}
+</td>
                 <td style={{ padding: "13px 16px", fontSize: 13, color: "#6B7280" }}>{loan.due_date || "—"}</td>
                 <td style={{ padding: "13px 16px", fontSize: 13, color: "#6B7280", maxWidth: 160 }}>{loan.purpose || "—"}</td>
-                <td style={{ padding: "13px 16px" }}>{statusBadge(loan.status)}</td>
+                <td style={{ padding: "13px 16px" }}>
+  {statusBadge(loan.status)}
+  {loan.review_note && (
+    <div style={{ fontSize: 11, color: "#DC2626", marginTop: 4, maxWidth: 180 }}>{loan.review_note}</div>
+  )}
+</td>
               </tr>
             ))}
           </tbody>
