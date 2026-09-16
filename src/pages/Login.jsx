@@ -36,9 +36,9 @@ export default function Login() {
           navigate("/setup");
         }
       }
-    } catch {
-      setError("Invalid email or password.");
-    }
+    } catch (err) {
+  setError(err.response?.data?.message || "Login failed. Please try again.");
+}
   };
 
   return (
