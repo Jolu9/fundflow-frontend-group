@@ -126,8 +126,8 @@ export default function TreasurerDashboard() {
   }, []);
 
   const logout = () => {
-  axios.post(`${API}/logout`, {}, { headers }).finally(() => { localStorage.removeItem("token"); navigate("/login"); });
-};
+    axios.post(`${API}/logout`, {}, { headers }).finally(() => { localStorage.removeItem("token"); navigate("/login"); });
+  };
 
   const generateInvite = async () => {
     const res = await axios.post(`${API}/communities/${community.id}/generate-invite`, {}, { headers });
@@ -174,6 +174,15 @@ export default function TreasurerDashboard() {
 
   return (
     <Layout user={user} onLogout={logout} role="treasurer" activePath="/treasurer">
+      <style>{`
+        @media (max-width: 900px) {
+          .ff-fund-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .ff-split-grid { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 500px) {
+          .ff-fund-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
 
       {/* WELCOME + INVITE BUTTON */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
@@ -219,7 +228,7 @@ export default function TreasurerDashboard() {
           <Wallet size={15} color="#9CA3AF" />
           <div style={{ fontSize: 12, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em" }}>Group Fund</div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+        <div className="ff-fund-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
           <div>
             <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6 }}>Current Fund</div>
             <div style={{ fontSize: 28, fontWeight: 800, color: "#111827", letterSpacing: "-0.5px" }}>K{currentFund.toLocaleString()}</div>
@@ -249,7 +258,7 @@ export default function TreasurerDashboard() {
       </div>
 
       {/* CONTRIBUTIONS THIS MONTH + REPAYMENT PROGRESS */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <div className="ff-split-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <div style={{ ...card }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

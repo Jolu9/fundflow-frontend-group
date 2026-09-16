@@ -99,10 +99,6 @@ export default function Login() {
               </button>
             </form>
 
-            <div style={{ marginTop: 20, background: "#F8FAFF", border: "1px solid #E0EAFF", borderRadius: 8, padding: "11px 14px", fontSize: 12, color: "#6B7280", lineHeight: 1.6 }}>
-              <strong style={{ display: "block", color: "#1E3A8A", marginBottom: 3 }}>Who can sign in?</strong>
-              Admin, Treasurer, and Member accounts. New? Create an account below.
-            </div>
 
             <div style={{ marginTop: 16, textAlign: "center", fontSize: 13, color: "#9CA3AF" }}>
               Don't have an account?{" "}

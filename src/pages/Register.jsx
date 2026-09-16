@@ -5,13 +5,17 @@ import axios from "axios";
 const API = "http://localhost:8000/api";
 
 export default function Register() {
-  const [form, setForm] = useState({ name: "", email: "", password: "", phone: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "", phone: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (form.password !== form.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
     setLoading(true); setError("");
     try {
       const res = await axios.post(`${API}/register`, form);
@@ -82,15 +86,24 @@ export default function Register() {
 
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Phone Number</label>
-                <input type="tel" placeholder="e.g. 0971000000" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} required
+                <input type="tel" placeholder="e.g. 0971000000" value={form.phone} maxLength={10}
+                  onChange={e => setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })} required
+                  style={{ width: "100%", padding: "11px 14px", border: "1.5px solid #E5E7EB", borderRadius: 8, fontSize: 13, fontFamily: "inherit", outline: "none", background: "#F9FAFB", boxSizing: "border-box" }}
+                  onFocus={e => e.target.style.border = "1.5px solid #2563EB"}
+                  onBlur={e => e.target.style.border = "1.5px solid #E5E7EB"} />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Password</label>
+                <input type="password" placeholder="Min. 6 characters" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required
                   style={{ width: "100%", padding: "11px 14px", border: "1.5px solid #E5E7EB", borderRadius: 8, fontSize: 13, fontFamily: "inherit", outline: "none", background: "#F9FAFB", boxSizing: "border-box" }}
                   onFocus={e => e.target.style.border = "1.5px solid #2563EB"}
                   onBlur={e => e.target.style.border = "1.5px solid #E5E7EB"} />
               </div>
 
               <div style={{ marginBottom: 24 }}>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Password</label>
-                <input type="password" placeholder="Min. 6 characters" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Confirm Password</label>
+                <input type="password" placeholder="Re-enter your password" value={form.confirmPassword} onChange={e => setForm({ ...form, confirmPassword: e.target.value })} required
                   style={{ width: "100%", padding: "11px 14px", border: "1.5px solid #E5E7EB", borderRadius: 8, fontSize: 13, fontFamily: "inherit", outline: "none", background: "#F9FAFB", boxSizing: "border-box" }}
                   onFocus={e => e.target.style.border = "1.5px solid #2563EB"}
                   onBlur={e => e.target.style.border = "1.5px solid #E5E7EB"} />

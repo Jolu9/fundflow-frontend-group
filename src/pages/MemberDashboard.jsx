@@ -83,6 +83,16 @@ export default function MemberDashboard() {
 
   return (
     <Layout user={user} onLogout={logout} role="member" activePath="/member">
+      <style>{`
+        @media (max-width: 900px) {
+          .ff-stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .ff-tile-grid { grid-template-columns: 1fr !important; }
+          .ff-split-grid { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 500px) {
+          .ff-stat-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
 
       {/* WELCOME + TREASURER */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
@@ -183,7 +193,7 @@ export default function MemberDashboard() {
       )}
 
       {/* STAT CARDS */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 20 }}>
+      <div className="ff-stat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 20 }}>
         {cards.map(c => {
           const Icon = c.icon;
           return (
@@ -197,7 +207,7 @@ export default function MemberDashboard() {
       </div>
 
       {/* QUICK ACTION TILES */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+      <div className="ff-tile-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
         <div onClick={() => navigate("/member/apply")} style={{ position: "relative", borderRadius: 14, overflow: "hidden", cursor: "pointer", boxShadow: "0 4px 20px rgba(37,99,235,0.25)" }}>
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, #1E3A8A, #2563EB)", opacity: 0.92 }} />
           <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 80% 20%, rgba(255,255,255,0.12), transparent 60%)" }} />
@@ -227,7 +237,7 @@ export default function MemberDashboard() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+      <div className="ff-split-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
 
         {/* CURRENT LOANS */}
         <div style={{ ...card, padding: "22px 24px" }}>
@@ -272,7 +282,7 @@ export default function MemberDashboard() {
                         <div style={{ width: `${progress}%`, background: isOverdue ? "#DC2626" : "#2563EB", height: 7, borderRadius: 99, transition: "width 0.4s" }} />
                       </div>
                     </div>
-                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6B7280" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6B7280" }}>
                       <span>Paid: <span style={{ fontWeight: 600, color: "#059669" }}>K{Number(loan.amount_paid).toLocaleString()}</span></span>
                       <span>Remaining: <span style={{ fontWeight: 600, color: isOverdue ? "#DC2626" : "#374151" }}>K{remaining.toLocaleString()}</span></span>
                     </div>

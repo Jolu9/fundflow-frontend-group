@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, ChevronDown, ChevronUp, Wallet, Users } from "lucide-react";
+import { X, ChevronDown, ChevronUp, Wallet, Users, Pencil } from "lucide-react";
 import axios from "axios";
 import Layout from "../components/Layout";
 
@@ -13,6 +13,10 @@ export default function TreasurerLoans() {
   const [community, setCommunity] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState(null);
+  const [editingLoan, setEditingLoan] = useState(null);
+  const [editForm, setEditForm] = useState({ amount: "", interest_rate: "", due_date: "" });
+  const [editError, setEditError] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
   const [reviewForm, setReviewForm] = useState({ interest_rate: "", due_date: "" });
   const [rejectReason, setRejectReason] = useState("");
   const [form, setForm] = useState({ user_id: "", amount: "", interest_rate: "10", due_date: "", purpose: "" });
@@ -52,8 +56,8 @@ export default function TreasurerLoans() {
   }, []);
 
   const logout = () => {
-  axios.post(`${API}/logout`, {}, { headers }).finally(() => { localStorage.removeItem("token"); navigate("/login"); });
-};
+    axios.post(`${API}/logout`, {}, { headers }).finally(() => { localStorage.removeItem("token"); navigate("/login"); });
+  };
 
   const membersWithOutstandingLoan = new Set(
     loans.filter(l => ["pending", "active", "overdue"].includes(l.status)).map(l => l.user_id)
@@ -97,6 +101,25 @@ export default function TreasurerLoans() {
     fetchData();
   };
 
+  const openEdit = (loan) => {
+    setEditingLoan(loan);
+    setEditForm({ amount: loan.amount, interest_rate: loan.interest_rate, due_date: loan.due_date || "" });
+    setEditError("");
+  };
+
+  const handleEditSave = async () => {
+    if (!editForm.amount || !editForm.interest_rate || !editForm.due_date) { setEditError("All fields are required."); return; }
+    setEditLoading(true); setEditError("");
+    try {
+      await axios.patch(`${API}/loans/${editingLoan.id}/edit-terms`, editForm, { headers });
+      setEditingLoan(null);
+      fetchData();
+    } catch (e) {
+      setEditError(e.response?.data?.message || "Failed to save changes.");
+    }
+    setEditLoading(false);
+  };
+
   const toggleMember = (userId) => {
     setExpandedMembers(prev => ({ ...prev, [userId]: !prev[userId] }));
   };
@@ -126,13 +149,107 @@ export default function TreasurerLoans() {
 
   const inputStyle = { width: "100%", padding: "10px 12px", border: "1.5px solid #E5E7EB", borderRadius: 7, fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box" };
 
+  const loanRowActions = (loan) => (
+    <>
+      {loan.status === "pending" && (
+        <button onClick={() => { setSelectedLoan(loan); setReviewForm({ interest_rate: "", due_date: "" }); setReviewError(""); setRejectReason(""); }}
+          style={{ padding: "4px 12px", background: "#EFF6FF", color: "#2563EB", border: "none", borderRadius: 5, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+          Review
+        </button>
+      )}
+      {(loan.status === "active" || loan.status === "overdue") && (
+        <>
+          <button onClick={() => { setSelectedLoan(loan); setReviewError(""); }}
+            style={{ padding: "4px 12px", background: "#EFF6FF", color: "#2563EB", border: "none", borderRadius: 5, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+            Details
+          </button>
+          <button onClick={() => openEdit(loan)}
+            style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 12px", background: "#FFFBEB", color: "#D97706", border: "none", borderRadius: 5, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+            <Pencil size={11} /> Edit
+          </button>
+          <button onClick={() => navigate(`/treasurer/repayments?loan=${loan.id}`)}
+            style={{ padding: "4px 12px", background: "#ECFDF5", color: "#059669", border: "none", borderRadius: 5, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+            Payment
+          </button>
+        </>
+      )}
+      {(loan.status === "completed" || loan.status === "rejected") && (
+        <button onClick={() => setSelectedLoan(loan)}
+          style={{ padding: "4px 12px", background: "#F3F4F6", color: "#6B7280", border: "none", borderRadius: 5, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+          View
+        </button>
+      )}
+    </>
+  );
+
   return (
     <Layout user={user} onLogout={logout} role="treasurer" activePath="/treasurer/loans">
+      <style>{`
+        .ff-loans-table { display: table; width: 100%; }
+        .ff-loans-cards { display: none; }
+        @media (max-width: 900px) {
+          .ff-loans-header { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; }
+          .ff-loans-header button { width: 100%; justify-content: center; }
+          .ff-stats-grid { grid-template-columns: 1fr !important; }
+          .ff-loans-table { display: none !important; }
+          .ff-loans-cards { display: flex !important; flex-direction: column; gap: 10px; padding: 12px; }
+          .ff-loan-card { background: #F9FAFB; border: 1px solid #F3F4F6; border-radius: 8px; padding: 12px 14px; }
+          .ff-loan-card-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+          .ff-loan-card-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+        }
+      `}</style>
+
+      {/* EDIT MODAL */}
+      {editingLoan && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 32, width: 480, maxWidth: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>Edit Loan Terms</h3>
+              <button onClick={() => setEditingLoan(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF" }}><X size={18} /></button>
+            </div>
+
+            {editError && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#DC2626", padding: "10px 14px", borderRadius: 7, fontSize: 13, marginBottom: 16 }}>{editError}</div>}
+
+            {Number(editingLoan.amount_paid) > 0 && (
+              <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", color: "#92400E", padding: "10px 14px", borderRadius: 7, fontSize: 12, marginBottom: 16 }}>
+                This loan already has repayments recorded, so the amount can't be changed. You can still fix the interest rate and due date.
+              </div>
+            )}
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Amount (K)</label>
+              <input type="number" value={editForm.amount} disabled={Number(editingLoan.amount_paid) > 0}
+                onChange={e => setEditForm({ ...editForm, amount: e.target.value })}
+                style={{ ...inputStyle, background: Number(editingLoan.amount_paid) > 0 ? "#F3F4F6" : "#fff", cursor: Number(editingLoan.amount_paid) > 0 ? "not-allowed" : "text" }} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Interest Rate (%)</label>
+                <input type="number" value={editForm.interest_rate} onChange={e => setEditForm({ ...editForm, interest_rate: e.target.value })} style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Due Date</label>
+                <input type="date" value={editForm.due_date} onChange={e => setEditForm({ ...editForm, due_date: e.target.value })} style={inputStyle} />
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={handleEditSave} disabled={editLoading}
+                style={{ flex: 1, padding: "10px", background: "#1E3A8A", color: "#fff", border: "none", borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                {editLoading ? "Saving..." : "Save Changes"}
+              </button>
+              <button onClick={() => setEditingLoan(null)}
+                style={{ flex: 1, padding: "10px", background: "#F3F4F6", color: "#374151", border: "none", borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* REVIEW MODAL */}
       {selectedLoan && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#fff", borderRadius: 12, padding: 32, width: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 32, width: 480, maxWidth: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
               <h3 style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>
                 {selectedLoan.status === "pending" ? "Review Loan Application" : "Loan Details"}
@@ -201,7 +318,7 @@ export default function TreasurerLoans() {
       )}
 
       {/* HEADER */}
-      <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div className="ff-loans-header" style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: "#111827", marginBottom: 4 }}>Loans</h1>
           <p style={{ fontSize: 13, color: "#9CA3AF" }}>
@@ -215,7 +332,7 @@ export default function TreasurerLoans() {
       </div>
 
       {/* STATS */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16, marginBottom: 20 }}>
+      <div className="ff-stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16, marginBottom: 20 }}>
         <div style={{ background: "#fff", borderRadius: 10, border: "1px solid #E5E7EB", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", padding: "18px 20px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
             <div style={{ width: 32, height: 32, borderRadius: 8, background: "#FEF2F2", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -331,7 +448,8 @@ export default function TreasurerLoans() {
 
                 {isExpanded && (
                   <div style={{ borderTop: "1px solid #F3F4F6" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    {/* DESKTOP TABLE */}
+                    <table className="ff-loans-table" style={{ borderCollapse: "collapse" }}>
                       <thead>
                         <tr style={{ background: "#F9FAFB" }}>
                           {["Amount", "Interest", "Penalty", "Total Due", "Paid", "Remaining", "Due Date", "Purpose", "Status", "Actions"].map(h => (
@@ -345,48 +463,52 @@ export default function TreasurerLoans() {
                             onMouseEnter={e => e.currentTarget.style.background = "#FAFAFA"}
                             onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                             <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 500, color: "#111827" }}>K{Number(loan.amount).toLocaleString()}</td>
-                                                        <td style={{ padding: "12px 16px", fontSize: 13, color: "#6B7280" }}>{loan.interest_rate}%</td>
+                            <td style={{ padding: "12px 16px", fontSize: 13, color: "#6B7280" }}>{loan.interest_rate}%</td>
                             <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: Number(loan.penalty_amount) > 0 ? 600 : 400, color: Number(loan.penalty_amount) > 0 ? "#DC2626" : "#9CA3AF" }}>
                               {Number(loan.penalty_amount) > 0 ? `K${Number(loan.penalty_amount).toLocaleString()}` : "—"}
                             </td>
                             <td style={{ padding: "12px 16px", fontSize: 13, color: "#6B7280" }}>K{Number(loan.total_due).toLocaleString()}</td>
                             <td style={{ padding: "12px 16px", fontSize: 13, color: "#6B7280" }}>K{Number(loan.amount_paid).toLocaleString()}</td>
                             <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: loan.status === "rejected" ? "#9CA3AF" : "#DC2626" }}>
-  {loan.status === "rejected" ? "—" : `K${(Number(loan.total_due) - Number(loan.amount_paid)).toLocaleString()}`}
-</td>
+                              {loan.status === "rejected" ? "—" : `K${(Number(loan.total_due) - Number(loan.amount_paid)).toLocaleString()}`}
+                            </td>
                             <td style={{ padding: "12px 16px", fontSize: 13, color: "#6B7280" }}>{loan.due_date || "—"}</td>
                             <td style={{ padding: "12px 16px", fontSize: 13, color: "#6B7280", maxWidth: 140 }}>{loan.purpose || "—"}</td>
                             <td style={{ padding: "12px 16px" }}>{statusBadge(loan.status)}</td>
-                            <td style={{ padding: "12px 16px", display: "flex", gap: 6 }}>
-                              {loan.status === "pending" && (
-                                <button onClick={() => { setSelectedLoan(loan); setReviewForm({ interest_rate: "", due_date: "" }); setReviewError(""); setRejectReason(""); }}
-                                  style={{ padding: "4px 12px", background: "#EFF6FF", color: "#2563EB", border: "none", borderRadius: 5, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
-                                  Review
-                                </button>
-                              )}
-                              {loan.status === "active" && (
-                                <>
-                                  <button onClick={() => { setSelectedLoan(loan); setReviewError(""); }}
-                                    style={{ padding: "4px 12px", background: "#EFF6FF", color: "#2563EB", border: "none", borderRadius: 5, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
-                                    Details
-                                  </button>
-                                  <button onClick={() => navigate(`/treasurer/repayments?loan=${loan.id}`)}
-                                    style={{ padding: "4px 12px", background: "#ECFDF5", color: "#059669", border: "none", borderRadius: 5, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
-                                    Payment
-                                  </button>
-                                </>
-                              )}
-                              {(loan.status === "completed" || loan.status === "rejected") && (
-                                <button onClick={() => setSelectedLoan(loan)}
-                                  style={{ padding: "4px 12px", background: "#F3F4F6", color: "#6B7280", border: "none", borderRadius: 5, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
-                                  View
-                                </button>
-                              )}
+                            <td style={{ padding: "12px 16px", display: "flex", gap: 6, flexWrap: "wrap" }}>
+                              {loanRowActions(loan)}
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
+
+                    {/* MOBILE CARDS */}
+                    <div className="ff-loans-cards">
+                      {memberLoans.map(loan => (
+                        <div key={loan.id} className="ff-loan-card">
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>K{Number(loan.amount).toLocaleString()}</div>
+                            {statusBadge(loan.status)}
+                          </div>
+                          <div className="ff-loan-card-row"><span>Interest</span><span>{loan.interest_rate}%</span></div>
+                          {Number(loan.penalty_amount) > 0 && (
+                            <div className="ff-loan-card-row" style={{ color: "#DC2626", fontWeight: 600 }}><span>Penalty</span><span>K{Number(loan.penalty_amount).toLocaleString()}</span></div>
+                          )}
+                          <div className="ff-loan-card-row"><span>Total Due</span><span>K{Number(loan.total_due).toLocaleString()}</span></div>
+                          <div className="ff-loan-card-row"><span>Paid</span><span>K{Number(loan.amount_paid).toLocaleString()}</span></div>
+                          <div className="ff-loan-card-row" style={{ fontWeight: 600, color: loan.status === "rejected" ? "#9CA3AF" : "#DC2626" }}>
+                            <span>Remaining</span>
+                            <span>{loan.status === "rejected" ? "—" : `K${(Number(loan.total_due) - Number(loan.amount_paid)).toLocaleString()}`}</span>
+                          </div>
+                          <div className="ff-loan-card-row"><span>Due Date</span><span>{loan.due_date || "—"}</span></div>
+                          {loan.purpose && <div className="ff-loan-card-row"><span>Purpose</span><span>{loan.purpose}</span></div>}
+                          <div className="ff-loan-card-actions">
+                            {loanRowActions(loan)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
