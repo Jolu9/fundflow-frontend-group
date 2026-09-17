@@ -36,6 +36,7 @@ export default function Layout({ children, user, onLogout, role = "admin", activ
   const navigate = useNavigate();
   const [navOpen, setNavOpen] = useState(false);
   const nav = role === "member" ? memberNav : role === "treasurer" ? treasurerNav : adminNav;
+  const dashboardPath = role === "member" ? "/member" : role === "treasurer" ? "/treasurer" : "/admin";
   const roleTextColor = roleColor[role] ?? "#9CA3AF";
 
   return (
@@ -187,7 +188,7 @@ export default function Layout({ children, user, onLogout, role = "admin", activ
           <button className="ff-menu-btn" onClick={() => setNavOpen(v => !v)} aria-label="Toggle navigation">
             {navOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
-          <div className="ff-brand-mobile">
+         <div className="ff-brand-mobile" onClick={() => navigate(dashboardPath)} style={{ cursor: "pointer" }}>
             Fund<span style={{ color: "#2563EB" }}>Flow</span>
           </div>
 
@@ -229,7 +230,7 @@ export default function Layout({ children, user, onLogout, role = "admin", activ
           </svg>
 
           <div className="ff-sidebar-header" style={{ padding: "20px 24px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", position: "relative", zIndex: 1 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>
+           <div onClick={() => navigate(dashboardPath)} style={{ fontSize: 18, fontWeight: 700, color: "#fff", cursor: "pointer" }}>
               Fund<span style={{ color: "#93C5FD" }}>Flow</span>
             </div>
             <div className="ff-sidebar-close" onClick={() => setNavOpen(false)}>
